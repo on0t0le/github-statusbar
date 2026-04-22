@@ -1,0 +1,31 @@
+name: GitHubWidget
+options:
+  bundleIdPrefix: com.github-widget
+  deploymentTarget:
+    macOS: "13.0"
+targets:
+  GitHubWidget:
+    type: application
+    platform: macOS
+    sources:
+      - path: GitHubWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.github-widget.GitHubWidget
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        LSUIElement: YES
+    info:
+      path: GitHubWidget/Info.plist
+      properties:
+        LSUIElement: YES
+        NSHumanReadableCopyright: ""
+  GitHubWidgetTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: GitHubWidgetTests
+    dependencies:
+      - target: GitHubWidget
+    settings:
+      base:
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
