@@ -20,6 +20,7 @@ actor GitHubService: GitHubServiceProtocol {
     }
 
     func fetchPRs(token: String, username: String, orgFilter: String) async throws -> PRFetchResult {
+        // username is reserved for future use; GitHub Search API resolves @me from the PAT
         async let reviewRequested = search(
             query: buildQuery("is:pr review-requested:@me state:open", orgFilter: orgFilter),
             token: token

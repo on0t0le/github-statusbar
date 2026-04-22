@@ -13,7 +13,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.github-widget.GitHubWidget
         MACOSX_DEPLOYMENT_TARGET: "13.0"
-        LSUIElement: YES
     info:
       path: GitHubWidget/Info.plist
       properties:
