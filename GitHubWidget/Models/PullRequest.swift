@@ -1,6 +1,6 @@
 import Foundation
 
-struct PullRequest: Identifiable, Equatable, Codable {
+struct PullRequest: Identifiable, Hashable, Codable {
     let id: Int
     let number: Int
     let title: String
@@ -23,7 +23,7 @@ struct PullRequest: Identifiable, Equatable, Codable {
     }
 }
 
-struct GitHubUser: Codable, Equatable {
+struct GitHubUser: Codable, Hashable {
     let login: String
     let avatarUrl: String
 
@@ -33,7 +33,7 @@ struct GitHubUser: Codable, Equatable {
     }
 }
 
-struct GitHubLabel: Codable, Equatable {
+struct GitHubLabel: Codable, Hashable {
     let name: String
     let color: String
 }
