@@ -64,6 +64,30 @@ final class GitHubServiceTests: XCTestCase {
         }
     }
 
+    func test_fetchPRs_throws_rateLimited_on403() async {
+        let session = MockURLSession(responseData: Data(), statusCode: 403)
+        let service = GitHubService(session: session)
+
+        do {
+            _ = try await service.fetchPRs(token: "tok", username: "me", orgFilter: "")
+            XCTFail("Expected throw")
+        } catch let error as GitHubError {
+            XCTAssertEqual(error, .rateLimited(retryAfter: nil))
+        }
+    }
+
+    func test_fetchPRs_throws_networkError_onRequestFailure() async {
+        let session = FailingURLSession()
+        let service = GitHubService(session: session)
+
+        do {
+            _ = try await service.fetchPRs(token: "tok", username: "me", orgFilter: "")
+            XCTFail("Expected throw")
+        } catch let error as GitHubError {
+            XCTAssertEqual(error, .networkError)
+        }
+    }
+
     // MARK: - Org filter
 
     func test_fetchPRs_appendsOrgFilterToQuery() async throws {
@@ -138,5 +162,11 @@ final class MockURLSession: URLSessionProtocol, @unchecked Sendable {
             headerFields: headers
         )!
         return (responseData, response)
+    }
+}
+
+final class FailingURLSession: URLSessionProtocol, @unchecked Sendable {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        throw URLError(.notConnectedToInternet)
     }
 }
