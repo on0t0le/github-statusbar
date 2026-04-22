@@ -113,11 +113,11 @@ struct PopoverView: View {
             .padding()
     }
 
-    private var relativeFormatter: RelativeDateTimeFormatter {
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .short
         return f
-    }
+    }()
 }
 
 struct SectionHeaderView: View {
