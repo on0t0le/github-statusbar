@@ -13,6 +13,7 @@ struct PRRowView: View {
                     .frame(width: 8, height: 8)
                     .opacity(isUnseen ? 1 : 0)
                     .padding(.top, 4)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pr.repoName)
                         .font(.caption)
@@ -33,6 +34,7 @@ struct PRRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityValue(isUnseen ? "Unseen" : "")
         .contextMenu {
             Button("Copy URL") {
                 NSPasteboard.general.clearContents()
