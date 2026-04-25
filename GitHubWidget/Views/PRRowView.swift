@@ -3,10 +3,16 @@ import AppKit
 
 struct PRRowView: View {
     let pr: PullRequest
+    let isUnseen: Bool
 
     var body: some View {
         Button(action: openPR) {
             HStack(alignment: .top, spacing: 8) {
+                Circle()
+                    .fill(Color.blue)
+                    .frame(width: 8, height: 8)
+                    .opacity(isUnseen ? 1 : 0)
+                    .padding(.top, 4)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pr.repoName)
                         .font(.caption)
