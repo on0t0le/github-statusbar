@@ -37,6 +37,8 @@ final class GitHubServiceTests: XCTestCase {
             XCTFail("Expected throw")
         } catch let error as GitHubError {
             XCTAssertEqual(error, .unauthorized)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
         }
     }
 
@@ -49,6 +51,8 @@ final class GitHubServiceTests: XCTestCase {
             XCTFail("Expected throw")
         } catch let error as GitHubError {
             XCTAssertEqual(error, .rateLimited(retryAfter: 120))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
         }
     }
 
@@ -61,6 +65,8 @@ final class GitHubServiceTests: XCTestCase {
             XCTFail("Expected throw")
         } catch let error as GitHubError {
             XCTAssertEqual(error, .decodingError)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
         }
     }
 
@@ -73,6 +79,8 @@ final class GitHubServiceTests: XCTestCase {
             XCTFail("Expected throw")
         } catch let error as GitHubError {
             XCTAssertEqual(error, .rateLimited(retryAfter: nil))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
         }
     }
 
@@ -85,6 +93,8 @@ final class GitHubServiceTests: XCTestCase {
             XCTFail("Expected throw")
         } catch let error as GitHubError {
             XCTAssertEqual(error, .networkError)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
         }
     }
 

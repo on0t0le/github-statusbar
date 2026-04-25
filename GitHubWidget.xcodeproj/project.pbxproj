@@ -21,6 +21,8 @@
 		D3A43CA5B01D51103428359D /* PRStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC4ED0F0C5DF6566E19253F /* PRStore.swift */; };
 		DCB87E0A80CA3E454844B5A1 /* PRStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB55CAA59BAE190D5443D4BC /* PRStoreTests.swift */; };
 		F01FA6C3AC3AC48031D827E9 /* GitHubWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35ACD4EF906973F1C84163C4 /* GitHubWidgetApp.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E7F8A9B0C1D2E3F4A5B6C7 /* NotificationService.swift */; };
+		B2C3D4E5F6071829A3B4C5D6 /* NotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F8A9B0C1D2E3F4A5B6C7D8 /* NotificationServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +51,8 @@
 		A5D1058EFB0930A78DFF4AD3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B8F05DF6DFD2941DC129819F /* GitHubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubService.swift; sourceTree = "<group>"; };
 		BB55CAA59BAE190D5443D4BC /* PRStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRStoreTests.swift; sourceTree = "<group>"; };
+		D6E7F8A9B0C1D2E3F4A5B6C7 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		E7F8A9B0C1D2E3F4A5B6C7D8 /* NotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationServiceTests.swift; sourceTree = "<group>"; };
 		CC4671DC37394AFBAAE55253 /* PullRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestTests.swift; sourceTree = "<group>"; };
 		E59D1735827A7EC8FA8EB387 /* GitHubWidget.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitHubWidget.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -81,6 +85,7 @@
 			children = (
 				1031C8F636AFBB434E85E054 /* GitHubServiceTests.swift */,
 				230D5B482F7A05DAEB70CB77 /* KeychainHelperTests.swift */,
+				E7F8A9B0C1D2E3F4A5B6C7D8 /* NotificationServiceTests.swift */,
 				BB55CAA59BAE190D5443D4BC /* PRStoreTests.swift */,
 				CC4671DC37394AFBAAE55253 /* PullRequestTests.swift */,
 			);
@@ -136,6 +141,7 @@
 			children = (
 				403B466C30960E874ED50F82 /* GitHubError.swift */,
 				B8F05DF6DFD2941DC129819F /* GitHubService.swift */,
+				D6E7F8A9B0C1D2E3F4A5B6C7 /* NotificationService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -228,6 +234,7 @@
 				5ACB52482A6C3D63E60359B9 /* GitHubService.swift in Sources */,
 				F01FA6C3AC3AC48031D827E9 /* GitHubWidgetApp.swift in Sources */,
 				3CEE7A113BD3B820EB29E3EE /* KeychainHelper.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* NotificationService.swift in Sources */,
 				98D710CB109C91889F3C287D /* PRRowView.swift in Sources */,
 				D3A43CA5B01D51103428359D /* PRStore.swift in Sources */,
 				C059072488871B4DF25569A1 /* PopoverView.swift in Sources */,
@@ -242,6 +249,7 @@
 			files = (
 				9E3071512DAF49492B1EF550 /* GitHubServiceTests.swift in Sources */,
 				5CCD064ADF41FBD66DF1B53A /* KeychainHelperTests.swift in Sources */,
+				B2C3D4E5F6071829A3B4C5D6 /* NotificationServiceTests.swift in Sources */,
 				DCB87E0A80CA3E454844B5A1 /* PRStoreTests.swift in Sources */,
 				6A4710D34F42D490EEAC983D /* PullRequestTests.swift in Sources */,
 			);

@@ -54,6 +54,20 @@ struct PRFetchResult {
     let changesRequested: [PullRequest]
     /// changes requested, author HAS re-requested review → waiting on reviewer
     let changesRequestedPending: [PullRequest]
+
+    init(
+        reviewRequested: [PullRequest],
+        changesRequested: [PullRequest],
+        changesRequestedPending: [PullRequest] = [],
+        assigned: [PullRequest],
+        readyToMerge: [PullRequest]
+    ) {
+        self.reviewRequested = reviewRequested
+        self.changesRequested = changesRequested
+        self.changesRequestedPending = changesRequestedPending
+        self.assigned = assigned
+        self.readyToMerge = readyToMerge
+    }
     let assigned: [PullRequest]
     let readyToMerge: [PullRequest]
 
