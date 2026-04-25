@@ -11,11 +11,21 @@ final class PRStore: ObservableObject {
     @Published var lastUpdated: Date?
     @Published private(set) var totalCount: Int = 0
 
-    private var previousPRs: [PullRequest] = []
+    @Published var unseenPRIds: Set<Int> = []
+    private var previousResult: PRFetchResult?
     private let service: any GitHubServiceProtocol
+    private let notificationService: any NotificationServiceProtocol
 
-    init(service: any GitHubServiceProtocol = GitHubService.shared) {
+    init(
+        service: any GitHubServiceProtocol = GitHubService.shared,
+        notificationService: any NotificationServiceProtocol = NotificationService.shared
+    ) {
         self.service = service
+        self.notificationService = notificationService
+    }
+
+    func markAllSeen() {
+        unseenPRIds = []
     }
 
     func refresh() async {
@@ -31,8 +41,11 @@ final class PRStore: ObservableObject {
 
         do {
             let result = try await service.fetchPRs(token: token, username: username, orgFilter: orgFilter)
-            diffAndEmitEvents(old: previousPRs, new: result.allPRs)
-            previousPRs = result.allPRs
+            if UserDefaults.standard.bool(forKey: "notifications_enabled") {
+                let newUnseen = notificationService.diff(old: previousResult, new: result, username: username)
+                unseenPRIds = unseenPRIds.union(newUnseen)
+            }
+            previousResult = result
 
             waitingOnMe = result.waitingOnMe
             readyToMerge = result.readyToMergeDeduped
@@ -48,8 +61,5 @@ final class PRStore: ObservableObject {
         isLoading = false
     }
 
-    private func diffAndEmitEvents(old: [PullRequest], new: [PullRequest]) {
-        // Stub: future UserNotifications emitted here for newly added PRs
-        _ = Set(new.map(\.id)).subtracting(Set(old.map(\.id)))
-    }
+
 }
