@@ -96,7 +96,10 @@ final class MockNotificationService: NotificationServiceProtocol, @unchecked Sen
         self.diffResult = diffResult
     }
 
-    func requestPermission() async { permissionRequested = true }
+    func requestPermission() async -> Bool {
+        permissionRequested = true
+        return true
+    }
 
     func diff(old: PRFetchResult?, new: PRFetchResult, username: String) -> Set<Int> { diffResult }
 }

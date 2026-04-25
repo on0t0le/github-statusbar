@@ -45,7 +45,10 @@ struct SettingsView: View {
                 set: { enabled in
                     notificationsEnabled = enabled
                     if enabled {
-                        Task { await NotificationService.shared.requestPermission() }
+                        Task {
+                            let granted = await NotificationService.shared.requestPermission()
+                            if !granted { notificationsEnabled = false }
+                        }
                     } else {
                         store.markAllSeen()
                     }

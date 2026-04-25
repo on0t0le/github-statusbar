@@ -3,7 +3,7 @@ import UserNotifications
 import AppKit
 
 protocol NotificationServiceProtocol: AnyObject {
-    func requestPermission() async
+    func requestPermission() async -> Bool
     func diff(old: PRFetchResult?, new: PRFetchResult, username: String) -> Set<Int>
 }
 
@@ -11,8 +11,8 @@ final class NotificationService: NSObject, NotificationServiceProtocol {
     static let shared = NotificationService()
     private override init() {}
 
-    func requestPermission() async {
-        try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+    func requestPermission() async -> Bool {
+        (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
     }
 
     func diff(old: PRFetchResult?, new: PRFetchResult, username: String) -> Set<Int> {
