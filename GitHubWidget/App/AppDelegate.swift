@@ -53,7 +53,11 @@ import UserNotifications
         popover = NSPopover()
         popover.contentSize = NSSize(width: 340, height: 440)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: PopoverView(store: store))
+        popover.contentViewController = NSHostingController(
+            rootView: PopoverView(store: store, onClose: { [weak self] in
+                self?.popover.performClose(nil)
+            })
+        )
     }
 
     private func setupBadgeObserver() {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PopoverView: View {
     @ObservedObject var store: PRStore
+    var onClose: (() -> Void)?
     @State private var showSettings = false
 
     var body: some View {
@@ -13,7 +14,7 @@ struct PopoverView: View {
             footerView
         }
         .frame(width: 340)
-        .sheet(isPresented: $showSettings) {
+        .sheet(isPresented: $showSettings, onDismiss: { onClose?() }) {
             SettingsView(store: store)
         }
     }
@@ -32,6 +33,12 @@ struct PopoverView: View {
             .disabled(store.isLoading)
             Button { showSettings = true } label: {
                 Image(systemName: "gear")
+            }
+            .buttonStyle(.plain)
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Image(systemName: "power")
             }
             .buttonStyle(.plain)
         }
@@ -88,6 +95,11 @@ struct PopoverView: View {
                     .foregroundColor(.secondary)
             }
             Spacer()
+            if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                Text("v\(version)")
+                    .font(.caption)
+                    .foregroundColor(.secondary.opacity(0.6))
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
