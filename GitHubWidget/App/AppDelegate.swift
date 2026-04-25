@@ -17,13 +17,31 @@ import Combine
         Task { await store.refresh() }
     }
 
+    private var contextMenu: NSMenu = {
+        let menu = NSMenu()
+        menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        return menu
+    }()
+
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         guard let button = statusItem.button else { return }
         button.image = NSImage(systemSymbolName: "arrow.triangle.pull", accessibilityDescription: "GitHub PRs")
         button.imagePosition = .imageLeft
-        button.action = #selector(togglePopover)
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        button.action = #selector(handleClick)
         button.target = self
+    }
+
+    @objc private func handleClick(_ sender: NSStatusBarButton) {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp {
+            statusItem.menu = contextMenu
+            statusItem.button?.performClick(nil)
+            statusItem.menu = nil
+        } else {
+            togglePopover()
+        }
     }
 
     private func setupPopover() {

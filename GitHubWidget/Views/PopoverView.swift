@@ -83,7 +83,7 @@ struct PopoverView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else if let date = store.lastUpdated {
-                Text("Updated \(date, formatter: relativeFormatter)")
+                Text("Updated \(date, formatter: Self.relativeFormatter)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

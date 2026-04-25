@@ -4,3 +4,12 @@ xcuserdata/
 DerivedData/
 *.xcworkspace/xcuserdata/
 .build/
+
+# Build artifacts
+build/
+*.pkg
+ExportOptions.plist
+
+# Xcode generated
+GitHubWidget.xcodeproj/project.xcworkspace/
+GitHubWidget.xcodeproj/xcuserdata/
