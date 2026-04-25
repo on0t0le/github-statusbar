@@ -50,7 +50,10 @@ struct GitHubSearchResponse: Codable {
 
 struct PRFetchResult {
     let reviewRequested: [PullRequest]
+    /// changes requested, author has NOT re-requested review → needs action from author
     let changesRequested: [PullRequest]
+    /// changes requested, author HAS re-requested review → waiting on reviewer
+    let changesRequestedPending: [PullRequest]
     let assigned: [PullRequest]
     let readyToMerge: [PullRequest]
 
@@ -65,11 +68,11 @@ struct PRFetchResult {
 
     var inProgress: [PullRequest] {
         let excludedIds = Set((waitingOnMe + readyToMergeDeduped).map(\.id))
-        return deduplicated(assigned.filter { !excludedIds.contains($0.id) })
+        return deduplicated((assigned + changesRequestedPending).filter { !excludedIds.contains($0.id) })
     }
 
     var allPRs: [PullRequest] {
-        deduplicated(reviewRequested + changesRequested + assigned + readyToMerge)
+        deduplicated(reviewRequested + changesRequested + changesRequestedPending + assigned + readyToMerge)
     }
 
     private func deduplicated(_ prs: [PullRequest]) -> [PullRequest] {

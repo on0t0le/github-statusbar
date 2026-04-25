@@ -20,7 +20,6 @@ actor GitHubService: GitHubServiceProtocol {
     }
 
     func fetchPRs(token: String, username: String, orgFilter: String) async throws -> PRFetchResult {
-        // username is reserved for future use; GitHub Search API resolves @me from the PAT
         async let reviewRequested = search(
             query: buildQuery("is:pr review-requested:@me state:open", orgFilter: orgFilter),
             token: token
@@ -39,7 +38,45 @@ actor GitHubService: GitHubServiceProtocol {
         )
 
         let (rr, cr, a, rtm) = try await (reviewRequested, changesRequested, assigned, readyToMerge)
-        return PRFetchResult(reviewRequested: rr, changesRequested: cr, assigned: a, readyToMerge: rtm)
+
+        var crActive: [PullRequest] = []
+        var crPending: [PullRequest] = []
+        await withTaskGroup(of: (PullRequest, Bool).self) { group in
+            for pr in cr {
+                group.addTask { (pr, await self.hasReviewRequests(pr: pr, token: token)) }
+            }
+            for await (pr, pending) in group {
+                if pending { crPending.append(pr) } else { crActive.append(pr) }
+            }
+        }
+
+        return PRFetchResult(
+            reviewRequested: rr,
+            changesRequested: crActive,
+            changesRequestedPending: crPending,
+            assigned: a,
+            readyToMerge: rtm
+        )
+    }
+
+    private struct PRDetail: Decodable {
+        let requestedReviewers: [GitHubUser]
+        enum CodingKeys: String, CodingKey {
+            case requestedReviewers = "requested_reviewers"
+        }
+    }
+
+    private func hasReviewRequests(pr: PullRequest, token: String) async -> Bool {
+        guard let url = URL(string: "\(pr.repositoryUrl)/pulls/\(pr.number)") else { return false }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let detail = try? JSONDecoder().decode(PRDetail.self, from: data) else {
+            return false
+        }
+        return !detail.requestedReviewers.isEmpty
     }
 
     private func buildQuery(_ base: String, orgFilter: String) -> String {
