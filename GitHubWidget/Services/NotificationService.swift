@@ -41,7 +41,7 @@ final class NotificationService: NSObject, NotificationServiceProtocol {
         return unseenIds
     }
 
-    func post(title: String, body: String, prId: Int, url: String) {
+    private func post(title: String, body: String, prId: Int, url: String) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
