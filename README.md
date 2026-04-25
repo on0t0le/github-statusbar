@@ -129,7 +129,3 @@ xcrun notarytool submit build/GitHubWidget-signed.pkg \
 
 xcrun stapler staple build/GitHubWidget-signed.pkg
 ```
-
-## Future
-
-- macOS notifications for new review requests and PR status changes
