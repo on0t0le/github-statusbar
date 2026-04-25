@@ -14,7 +14,7 @@ struct PopoverView: View {
         }
         .frame(width: 340)
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            SettingsView(store: store)
         }
     }
 
