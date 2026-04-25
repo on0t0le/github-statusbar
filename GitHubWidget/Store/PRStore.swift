@@ -11,7 +11,7 @@ final class PRStore: ObservableObject {
     @Published var lastUpdated: Date?
     @Published private(set) var totalCount: Int = 0
 
-    @Published var unseenPRIds: Set<Int> = []
+    @Published private(set) var unseenPRIds: Set<Int> = []
     private var previousResult: PRFetchResult?
     private let service: any GitHubServiceProtocol
     private let notificationService: any NotificationServiceProtocol
