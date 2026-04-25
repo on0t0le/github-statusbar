@@ -85,3 +85,68 @@ final class MockGitHubService: GitHubServiceProtocol, @unchecked Sendable {
         return result!
     }
 }
+
+// MARK: - MockNotificationService
+
+final class MockNotificationService: NotificationServiceProtocol, @unchecked Sendable {
+    var diffResult: Set<Int>
+    var permissionRequested = false
+
+    init(diffResult: Set<Int> = []) {
+        self.diffResult = diffResult
+    }
+
+    func requestPermission() async -> Bool {
+        permissionRequested = true
+        return true
+    }
+
+    func diff(old: PRFetchResult?, new: PRFetchResult, username: String) -> Set<Int> { diffResult }
+}
+
+// MARK: - Notification tests
+
+extension PRStoreTests {
+
+    func test_markAllSeen_clearsUnseenPRIds() async {
+        let mockNotif = MockNotificationService(diffResult: [1, 2])
+        let store = PRStore(service: MockGitHubService(), notificationService: mockNotif)
+        UserDefaults.standard.set(true, forKey: "notifications_enabled")
+        defer { UserDefaults.standard.removeObject(forKey: "notifications_enabled") }
+        KeychainHelper.save(key: "github_pat", value: "token")
+        defer { KeychainHelper.delete(key: "github_pat") }
+
+        await store.refresh()
+        XCTAssertEqual(store.unseenPRIds, [1, 2])
+
+        store.markAllSeen()
+        XCTAssertTrue(store.unseenPRIds.isEmpty)
+    }
+
+    func test_unseenPRIds_accumulatesAcrossRefreshes() async {
+        let mockNotif = MockNotificationService(diffResult: [1])
+        let store = PRStore(service: MockGitHubService(), notificationService: mockNotif)
+        UserDefaults.standard.set(true, forKey: "notifications_enabled")
+        defer { UserDefaults.standard.removeObject(forKey: "notifications_enabled") }
+        KeychainHelper.save(key: "github_pat", value: "token")
+        defer { KeychainHelper.delete(key: "github_pat") }
+
+        await store.refresh()
+        mockNotif.diffResult = [2]
+        await store.refresh()
+
+        XCTAssertEqual(store.unseenPRIds, [1, 2])
+    }
+
+    func test_unseenPRIds_notPopulated_whenNotificationsDisabled() async {
+        let mockNotif = MockNotificationService(diffResult: [99])
+        let store = PRStore(service: MockGitHubService(), notificationService: mockNotif)
+        UserDefaults.standard.set(false, forKey: "notifications_enabled")
+        defer { UserDefaults.standard.removeObject(forKey: "notifications_enabled") }
+        KeychainHelper.save(key: "github_pat", value: "token")
+        defer { KeychainHelper.delete(key: "github_pat") }
+
+        await store.refresh()
+        XCTAssertTrue(store.unseenPRIds.isEmpty)
+    }
+}

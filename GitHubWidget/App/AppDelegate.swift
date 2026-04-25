@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import UserNotifications
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -10,10 +11,14 @@ import Combine
     private var refreshTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = NotificationService.shared
         setupStatusItem()
         setupPopover()
         setupBadgeObserver()
         startTimer()
+        if UserDefaults.standard.bool(forKey: "notifications_enabled") {
+            Task { await NotificationService.shared.requestPermission() }
+        }
         Task { await store.refresh() }
     }
 
@@ -75,6 +80,7 @@ import Combine
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+            store.markAllSeen()
         }
     }
 }

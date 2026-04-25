@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct SettingsView: View {
+    let store: PRStore
     @Environment(\.dismiss) private var dismiss
     @State private var token = ""
     @State private var username = ""
     @State private var orgFilter = ""
+    @AppStorage("notifications_enabled") private var notificationsEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -37,6 +39,21 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+
+            Toggle("Enable notifications", isOn: Binding(
+                get: { notificationsEnabled },
+                set: { enabled in
+                    notificationsEnabled = enabled
+                    if enabled {
+                        Task {
+                            let granted = await NotificationService.shared.requestPermission()
+                            if !granted { notificationsEnabled = false }
+                        }
+                    } else {
+                        store.markAllSeen()
+                    }
+                }
+            ))
 
             HStack {
                 Spacer()
