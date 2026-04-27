@@ -7,6 +7,14 @@ on:
       - ".github/**"
       - "**.md"
       - "docs/**"
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: false
+        default: patch
+        type: choice
+        options: [ patch, minor, major ]
 
 permissions:
   contents: write
@@ -27,7 +35,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
-          DEFAULT_BUMP: patch
+          DEFAULT_BUMP: ${{ inputs.bump || 'patch' }}
           MAJOR_STRING_TOKEN: "BREAKING CHANGE"
           MINOR_STRING_TOKEN: "feat:"
           PATCH_STRING_TOKEN: "fix:"
