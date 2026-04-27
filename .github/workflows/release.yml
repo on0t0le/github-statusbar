@@ -37,14 +37,7 @@ jobs:
           NEW_TAG: ${{ steps.tag.outputs.new_tag }}
         run: |
           VERSION="${NEW_TAG#v}"
-          python3 - <<EOF
-          import re, os
-          version = os.environ["VERSION"]
-          path = "project.yml"
-          content = open(path).read()
-          updated = re.sub(r'(MARKETING_VERSION:\s*)"[^"]+"', rf'\1"{version}"', content)
-          open(path, "w").write(updated)
-          EOF
+          sed -i "s/MARKETING_VERSION: \"[^\"]*\"/MARKETING_VERSION: \"${VERSION}\"/" project.yml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add project.yml
