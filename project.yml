@@ -21,6 +21,8 @@ targets:
       properties:
         LSUIElement: YES
         NSHumanReadableCopyright: ""
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
   GitHubWidgetTests:
     type: bundle.unit-test
     platform: macOS

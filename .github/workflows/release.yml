@@ -12,53 +12,63 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: macos-latest
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.tag.outputs.new_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Read version from project.yml
-        id: version
-        run: |
-          VERSION=$(python3 -c "
-          import re
-          content = open('project.yml').read()
-          m = re.search(r'MARKETING_VERSION:\s*\"(\d+\.\d+\.\d+)\"', content)
-          print(m.group(1))
-          ")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Check if tag already exists
-        id: check_tag
+      - name: Bump version and push tag
+        id: tag
+        uses: anothrNick/github-tag-action@master
         env:
-          TAG: v${{ steps.version.outputs.version }}
-        run: |
-          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q .; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+          MAJOR_STRING_TOKEN: "BREAKING CHANGE"
+          MINOR_STRING_TOKEN: "feat:"
+          PATCH_STRING_TOKEN: "fix:"
 
-      - name: Create and push tag
-        if: steps.check_tag.outputs.exists == 'false'
+      - name: Sync MARKETING_VERSION in project.yml
         env:
-          TAG: v${{ steps.version.outputs.version }}
+          NEW_TAG: ${{ steps.tag.outputs.new_tag }}
         run: |
-          git tag "$TAG"
-          git push origin "$TAG"
+          VERSION="${NEW_TAG#v}"
+          python3 - <<EOF
+          import re, os
+          version = os.environ["VERSION"]
+          path = "project.yml"
+          content = open(path).read()
+          updated = re.sub(r'(MARKETING_VERSION:\s*)"[^"]+"', rf'\1"{version}"', content)
+          open(path, "w").write(updated)
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add project.yml
+          git diff --staged --quiet || git commit -m "chore: bump MARKETING_VERSION to ${NEW_TAG} [skip ci]"
+          git push
+
+  build:
+    needs: tag
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set version env
+        run: echo "VERSION=${{ needs.tag.outputs.new_tag }}" >> "$GITHUB_ENV"
 
       - name: Install xcodegen
-        if: steps.check_tag.outputs.exists == 'false'
         run: brew install xcodegen
 
       - name: Generate Xcode project
-        if: steps.check_tag.outputs.exists == 'false'
         run: xcodegen generate
 
       - name: Archive
-        if: steps.check_tag.outputs.exists == 'false'
         run: |
           xcodebuild archive \
             -project GitHubWidget.xcodeproj \
@@ -67,12 +77,10 @@ jobs:
             -archivePath build/GitHubWidget.xcarchive \
             ARCHS=arm64 \
             ONLY_ACTIVE_ARCH=NO \
+            MARKETING_VERSION="${VERSION#v}" \
             CODE_SIGN_IDENTITY="-"
 
       - name: Build PKG
-        if: steps.check_tag.outputs.exists == 'false'
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
         run: |
           mkdir -p build/pkg-root/Applications
           ditto \
@@ -82,15 +90,14 @@ jobs:
           pkgbuild \
             --root build/pkg-root \
             --identifier com.github-widget.GitHubWidget \
-            --version "$VERSION" \
+            --version "${VERSION#v}" \
             --install-location / \
-            "build/GitHubWidget-v${VERSION}.pkg"
+            "build/GitHubWidget-${VERSION}.pkg"
 
-      - name: Create GitHub release
-        if: steps.check_tag.outputs.exists == 'false'
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          files: build/GitHubWidget-v${{ steps.version.outputs.version }}.pkg
+          tag_name: ${{ needs.tag.outputs.new_tag }}
+          name: ${{ needs.tag.outputs.new_tag }}
+          files: "build/GitHubWidget-${{ needs.tag.outputs.new_tag }}.pkg"
           generate_release_notes: true

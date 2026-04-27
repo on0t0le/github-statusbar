@@ -65,6 +65,11 @@ import UserNotifications
             .receive(on: DispatchQueue.main)
             .sink { [weak self] count in self?.updateBadge(count: count) }
             .store(in: &cancellables)
+
+        store.$unseenPRIds
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (ids: Set<Int>) in self?.updateDot(hasUnseen: !ids.isEmpty) }
+            .store(in: &cancellables)
     }
 
     private func startTimer() {
@@ -75,6 +80,31 @@ import UserNotifications
 
     private func updateBadge(count: Int) {
         statusItem.button?.title = count > 0 ? " \(count)" : ""
+    }
+
+    private func updateDot(hasUnseen: Bool) {
+        guard let button = statusItem.button else { return }
+        let base = NSImage(systemSymbolName: "arrow.triangle.pull", accessibilityDescription: "GitHub PRs")!
+        guard hasUnseen else {
+            button.image = base
+            return
+        }
+        let size = base.size
+        let dotRadius: CGFloat = 4
+        let composed = NSImage(size: size, flipped: false) { rect in
+            base.draw(in: rect)
+            NSColor.systemBlue.setFill()
+            let dotRect = NSRect(
+                x: size.width - dotRadius * 2 - 1,
+                y: size.height - dotRadius * 2 - 1,
+                width: dotRadius * 2,
+                height: dotRadius * 2
+            )
+            NSBezierPath(ovalIn: dotRect).fill()
+            return true
+        }
+        composed.isTemplate = false
+        button.image = composed
     }
 
     @objc private func togglePopover() {
