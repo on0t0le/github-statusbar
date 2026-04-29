@@ -98,7 +98,8 @@ extension PullRequest {
         title: String = "Test PR",
         htmlUrl: String = "https://github.com/org/repo/pull/1",
         repositoryUrl: String = "https://api.github.com/repos/org/repo",
-        draft: Bool = false
+        draft: Bool = false,
+        comments: Int = 0
     ) -> PullRequest {
         PullRequest(
             id: id,
@@ -108,7 +109,8 @@ extension PullRequest {
             repositoryUrl: repositoryUrl,
             user: GitHubUser(login: "testuser", avatarUrl: "https://example.com/avatar.png"),
             draft: draft,
-            labels: []
+            labels: [],
+            comments: comments
         )
     }
 }

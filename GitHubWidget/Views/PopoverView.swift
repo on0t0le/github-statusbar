@@ -58,21 +58,21 @@ struct PopoverView: View {
                     if !store.waitingOnMe.isEmpty {
                         SectionHeaderView(emoji: "👀", title: "WAITING ON ME", count: store.waitingOnMe.count)
                         ForEach(store.waitingOnMe) { pr in
-                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id))
+                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
                             Divider().padding(.leading, 12)
                         }
                     }
                     if !store.readyToMerge.isEmpty {
                         SectionHeaderView(emoji: "✅", title: "READY TO MERGE", count: store.readyToMerge.count)
                         ForEach(store.readyToMerge) { pr in
-                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id))
+                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
                             Divider().padding(.leading, 12)
                         }
                     }
                     if !store.inProgress.isEmpty {
                         SectionHeaderView(emoji: "🔄", title: "IN PROGRESS", count: store.inProgress.count)
                         ForEach(store.inProgress) { pr in
-                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id))
+                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
                             Divider().padding(.leading, 12)
                         }
                     }
