@@ -40,18 +40,6 @@ jobs:
           MINOR_STRING_TOKEN: "feat:"
           PATCH_STRING_TOKEN: "fix:"
 
-      - name: Sync MARKETING_VERSION in project.yml
-        env:
-          NEW_TAG: ${{ steps.tag.outputs.new_tag }}
-        run: |
-          VERSION="${NEW_TAG#v}"
-          sed -i "s/MARKETING_VERSION: \"[^\"]*\"/MARKETING_VERSION: \"${VERSION}\"/" project.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add project.yml
-          git diff --staged --quiet || git commit -m "chore: bump MARKETING_VERSION to ${NEW_TAG} [skip ci]"
-          git push
-
   build:
     needs: tag
     runs-on: macos-latest
