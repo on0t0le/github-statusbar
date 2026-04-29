@@ -84,6 +84,8 @@ final class MockGitHubService: GitHubServiceProtocol, @unchecked Sendable {
         if let error { throw error }
         return result!
     }
+
+    func fetchEnrichments(prs: [PullRequest], token: String) async -> [Int: PREnrichment] { [:] }
 }
 
 // MARK: - MockNotificationService

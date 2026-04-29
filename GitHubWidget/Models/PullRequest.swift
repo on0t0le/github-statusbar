@@ -9,6 +9,7 @@ struct PullRequest: Identifiable, Hashable, Codable {
     let user: GitHubUser
     let draft: Bool
     let labels: [GitHubLabel]
+    let comments: Int
 
     var repoName: String {
         let parts = repositoryUrl.split(separator: "/")
@@ -17,10 +18,41 @@ struct PullRequest: Identifiable, Hashable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, number, title, draft, labels, user
+        case id, number, title, draft, labels, user, comments
         case htmlUrl = "html_url"
         case repositoryUrl = "repository_url"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        number = try c.decode(Int.self, forKey: .number)
+        title = try c.decode(String.self, forKey: .title)
+        htmlUrl = try c.decode(String.self, forKey: .htmlUrl)
+        repositoryUrl = try c.decode(String.self, forKey: .repositoryUrl)
+        user = try c.decode(GitHubUser.self, forKey: .user)
+        draft = try c.decode(Bool.self, forKey: .draft)
+        labels = try c.decode([GitHubLabel].self, forKey: .labels)
+        comments = (try? c.decode(Int.self, forKey: .comments)) ?? 0
+    }
+
+    init(
+        id: Int, number: Int, title: String, htmlUrl: String, repositoryUrl: String,
+        user: GitHubUser, draft: Bool, labels: [GitHubLabel], comments: Int = 0
+    ) {
+        self.id = id; self.number = number; self.title = title
+        self.htmlUrl = htmlUrl; self.repositoryUrl = repositoryUrl
+        self.user = user; self.draft = draft; self.labels = labels
+        self.comments = comments
+    }
+}
+
+struct PREnrichment {
+    let approvedReviewers: Int
+    let totalReviewers: Int
+    let checksPassed: Int
+    let checksFailed: Int
+    let checksTotal: Int
 }
 
 struct GitHubUser: Codable, Hashable {

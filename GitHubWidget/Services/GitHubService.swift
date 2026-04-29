@@ -8,6 +8,7 @@ extension URLSession: URLSessionProtocol {}
 
 protocol GitHubServiceProtocol: Sendable {
     func fetchPRs(token: String, username: String, orgFilter: String) async throws -> PRFetchResult
+    func fetchEnrichments(prs: [PullRequest], token: String) async -> [Int: PREnrichment]
 }
 
 actor GitHubService: GitHubServiceProtocol {
@@ -61,8 +62,26 @@ actor GitHubService: GitHubServiceProtocol {
 
     private struct PRDetail: Decodable {
         let requestedReviewers: [GitHubUser]
+        let head: PRHead
+        struct PRHead: Decodable { let sha: String }
         enum CodingKeys: String, CodingKey {
             case requestedReviewers = "requested_reviewers"
+            case head
+        }
+    }
+
+    private struct PRReview: Decodable {
+        let state: String
+        let user: GitHubUser
+    }
+
+    private struct CheckRunsResponse: Decodable {
+        let checkRuns: [CheckRun]
+        struct CheckRun: Decodable {
+            let conclusion: String?
+        }
+        enum CodingKeys: String, CodingKey {
+            case checkRuns = "check_runs"
         }
     }
 
@@ -77,6 +96,72 @@ actor GitHubService: GitHubServiceProtocol {
             return false
         }
         return !detail.requestedReviewers.isEmpty
+    }
+
+    func fetchEnrichments(prs: [PullRequest], token: String) async -> [Int: PREnrichment] {
+        var results: [Int: PREnrichment] = [:]
+        await withTaskGroup(of: (Int, PREnrichment?).self) { group in
+            for pr in prs {
+                group.addTask { (pr.id, await self.enrichPR(pr: pr, token: token)) }
+            }
+            for await (id, enrichment) in group {
+                if let e = enrichment { results[id] = e }
+            }
+        }
+        return results
+    }
+
+    private func enrichPR(pr: PullRequest, token: String) async -> PREnrichment? {
+        guard let detailURL = URL(string: "\(pr.repositoryUrl)/pulls/\(pr.number)") else { return nil }
+        var detailReq = URLRequest(url: detailURL)
+        detailReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        detailReq.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        guard let (detailData, detailResp) = try? await session.data(for: detailReq),
+              let http = detailResp as? HTTPURLResponse, http.statusCode == 200,
+              let detail = try? JSONDecoder().decode(PRDetail.self, from: detailData) else { return nil }
+
+        async let reviewsResult = fetchReviews(pr: pr, token: token)
+        async let checksResult = fetchCheckRuns(repositoryUrl: pr.repositoryUrl, sha: detail.head.sha, token: token)
+        let (reviews, checks) = await (reviewsResult, checksResult)
+
+        var latestByUser: [String: String] = [:]
+        for review in reviews { latestByUser[review.user.login] = review.state }
+        let approved = latestByUser.values.filter { $0 == "APPROVED" }.count
+        var allReviewers = Set(latestByUser.keys)
+        for r in detail.requestedReviewers { allReviewers.insert(r.login) }
+
+        return PREnrichment(
+            approvedReviewers: approved,
+            totalReviewers: allReviewers.count,
+            checksPassed: checks.passed,
+            checksFailed: checks.failed,
+            checksTotal: checks.total
+        )
+    }
+
+    private func fetchReviews(pr: PullRequest, token: String) async -> [PRReview] {
+        guard let url = URL(string: "\(pr.repositoryUrl)/pulls/\(pr.number)/reviews") else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let reviews = try? JSONDecoder().decode([PRReview].self, from: data) else { return [] }
+        return reviews
+    }
+
+    private func fetchCheckRuns(repositoryUrl: String, sha: String, token: String) async -> (passed: Int, failed: Int, total: Int) {
+        guard let url = URL(string: "\(repositoryUrl)/commits/\(sha)/check-runs?per_page=100") else { return (0, 0, 0) }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let result = try? JSONDecoder().decode(CheckRunsResponse.self, from: data) else { return (0, 0, 0) }
+        let relevant = result.checkRuns.filter { !["skipped", "neutral"].contains($0.conclusion ?? "") }
+        let passed = relevant.filter { $0.conclusion == "success" }.count
+        let failed = relevant.filter { ["failure", "timed_out", "action_required"].contains($0.conclusion ?? "") }.count
+        return (passed, failed, relevant.count)
     }
 
     private func buildQuery(_ base: String, orgFilter: String) -> String {
