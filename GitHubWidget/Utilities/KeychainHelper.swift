@@ -38,24 +38,25 @@ enum KeychainHelper {
         return String(data: data, encoding: .utf8)
     }
 
-    // Isolated to contain deprecation warnings for SecACL APIs (no modern replacement).
+    // nil trustedList = "any application, no password prompt" per SecAccessCreate docs.
+    // Do NOT iterate and rewrite ACLs — doing so preserves the default prompt selector
+    // (confirm flag), which causes macOS to re-prompt even with an open trusted list.
     @available(macOS, deprecated: 10.10)
     private static func makeAnyAppAccess(label: String) -> SecAccess? {
         var access: SecAccess?
         SecAccessCreate(label as CFString, nil, &access)
-        guard let access else { return nil }
-        var aclList: CFArray?
-        SecAccessCopyACLList(access, &aclList)
-        if let acls = aclList as? [SecACL] {
-            for acl in acls {
-                var appList: CFArray?
-                var desc: CFString?
-                var prompt = SecKeychainPromptSelector()
-                SecACLCopyContents(acl, &appList, &desc, &prompt)
-                SecACLSetContents(acl, nil, desc ?? label as CFString, prompt)
-            }
-        }
         return access
+    }
+
+    // Re-saves an existing item to apply the corrected ACL. Call once on app launch
+    // to silently migrate items written by older builds (which preserved the prompt flag).
+    static func migrateACLIfNeeded(key: String) {
+        let flagKey = "keychain_acl_v2_\(key)"
+        guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
+        if let value = load(key: key) {
+            save(key: key, value: value)
+        }
+        UserDefaults.standard.set(true, forKey: flagKey)
     }
 
     static func delete(key: String) {
