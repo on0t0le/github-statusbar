@@ -9,8 +9,10 @@ import UserNotifications
     private let store = PRStore()
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
+    private var updateWatcher: DispatchSourceFileSystemObject?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        startWatchingForUpdates()
         UNUserNotificationCenter.current().delegate = NotificationService.shared
         setupStatusItem()
         setupPopover()
@@ -28,6 +30,44 @@ import UserNotifications
         menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return menu
     }()
+
+    private func startWatchingForUpdates() {
+        guard let execPath = Bundle.main.executablePath else { return }
+        let fd = open(execPath, O_EVTONLY)
+        guard fd >= 0 else { return }
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .rename, .delete],
+            queue: .main
+        )
+        source.setEventHandler { [weak self] in
+            // Delay to let the replacement finish before reading the new bundle.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self?.relaunchIfUpdated()
+            }
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        updateWatcher = source
+    }
+
+    private func relaunchIfUpdated() {
+        let infoPlistURL = URL(fileURLWithPath: Bundle.main.bundlePath + "/Contents/Info.plist")
+        guard let data = try? Data(contentsOf: infoPlistURL),
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let diskVersion = plist["CFBundleVersion"] as? String,
+              let runningVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String,
+              diskVersion != runningVersion else { return }
+
+        updateWatcher?.cancel()
+        updateWatcher = nil
+        let bundleURL = URL(fileURLWithPath: Bundle.main.bundlePath)
+        let config = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.openApplication(at: bundleURL, configuration: config) { _, _ in
+            NSApp.terminate(nil)
+        }
+    }
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
