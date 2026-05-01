@@ -4,24 +4,20 @@ import Foundation
 enum KeychainHelper {
     static func save(key: String, value: String) {
         let data = Data(value.utf8)
-
-        // Build access ACL that allows any application — prevents re-prompt after app upgrades
-        // when ad-hoc signing changes the binary signature each build.
-        // SecACL APIs are deprecated but remain the only way to set "any app" ACL on macOS.
-        let access = makeAnyAppAccess(label: key)
-
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
+            kSecUseDataProtectionKeychain as String: true
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
-        var addQuery: [String: Any] = [
+        let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecUseDataProtectionKeychain as String: true
         ]
-        if let access { addQuery[kSecAttrAccess as String] = access }
         SecItemAdd(addQuery as CFDictionary, nil)
     }
 
@@ -30,7 +26,8 @@ enum KeychainHelper {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseDataProtectionKeychain as String: true
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -38,32 +35,44 @@ enum KeychainHelper {
         return String(data: data, encoding: .utf8)
     }
 
-    // nil trustedList = "any application, no password prompt" per SecAccessCreate docs.
-    // Do NOT iterate and rewrite ACLs — doing so preserves the default prompt selector
-    // (confirm flag), which causes macOS to re-prompt even with an open trusted list.
-    @available(macOS, deprecated: 10.10)
-    private static func makeAnyAppAccess(label: String) -> SecAccess? {
-        var access: SecAccess?
-        SecAccessCreate(label as CFString, nil, &access)
-        return access
-    }
-
-    // Re-saves an existing item to apply the corrected ACL. Call once on app launch
-    // to silently migrate items written by older builds (which preserved the prompt flag).
-    static func migrateACLIfNeeded(key: String) {
-        let flagKey = "keychain_acl_v2_\(key)"
-        guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
-        if let value = load(key: key) {
-            save(key: key, value: value)
-        }
-        UserDefaults.standard.set(true, forKey: flagKey)
-    }
-
     static func delete(key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
+            kSecUseDataProtectionKeychain as String: true
         ]
         SecItemDelete(query as CFDictionary)
+    }
+
+    // Migrates token from legacy keychain (where "Always Allow" re-adds the app's code
+    // signature to the ACL on each click, breaking the "any app" intent on the next update)
+    // to the Data Protection keychain (no code-signature ACL, never prompts on updates).
+    // Flag set only on success — retries if previous attempt was denied.
+    static func migrateACLIfNeeded(key: String) {
+        let flagKey = "keychain_dp_migrated_\(key)"
+        guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
+
+        // Already in Data Protection keychain — nothing to migrate.
+        if load(key: key) != nil {
+            UserDefaults.standard.set(true, forKey: flagKey)
+            return
+        }
+
+        // Read from legacy keychain. May prompt once if item has app-specific ACL.
+        let legacyQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(legacyQuery as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let value = String(data: data, encoding: .utf8) else {
+            return  // No legacy item or access denied — retry next launch.
+        }
+
+        save(key: key, value: value)
+        UserDefaults.standard.set(true, forKey: flagKey)
     }
 }
