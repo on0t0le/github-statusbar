@@ -65,6 +65,10 @@ struct GitHubUser: Codable, Hashable {
     }
 }
 
+struct GitHubTeam: Codable, Hashable {
+    let slug: String
+}
+
 struct GitHubLabel: Codable, Hashable {
     let name: String
     let color: String
