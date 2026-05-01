@@ -19,6 +19,7 @@ import UserNotifications
         if UserDefaults.standard.bool(forKey: "notifications_enabled") {
             Task { await NotificationService.shared.requestPermission() }
         }
+        KeychainHelper.migrateACLIfNeeded(key: "github_pat")
         Task { await store.refresh() }
     }
 
