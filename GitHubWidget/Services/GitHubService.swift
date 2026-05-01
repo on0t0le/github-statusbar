@@ -62,10 +62,12 @@ actor GitHubService: GitHubServiceProtocol {
 
     private struct PRDetail: Decodable {
         let requestedReviewers: [GitHubUser]
+        let requestedTeams: [GitHubTeam]
         let head: PRHead
         struct PRHead: Decodable { let sha: String }
         enum CodingKeys: String, CodingKey {
             case requestedReviewers = "requested_reviewers"
+            case requestedTeams = "requested_teams"
             case head
         }
     }
@@ -129,6 +131,7 @@ actor GitHubService: GitHubServiceProtocol {
         let approved = latestByUser.values.filter { $0 == "APPROVED" }.count
         var allReviewers = Set(latestByUser.keys)
         for r in detail.requestedReviewers { allReviewers.insert(r.login) }
+        for t in detail.requestedTeams { allReviewers.insert("team:\(t.slug)") }
 
         return PREnrichment(
             approvedReviewers: approved,
