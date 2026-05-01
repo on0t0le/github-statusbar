@@ -127,7 +127,13 @@ actor GitHubService: GitHubServiceProtocol {
         let (reviews, checks) = await (reviewsResult, checksResult)
 
         var latestByUser: [String: String] = [:]
-        for review in reviews { latestByUser[review.user.login] = review.state }
+        for review in reviews {
+            if review.state != "COMMENTED" {
+                latestByUser[review.user.login] = review.state
+            } else if latestByUser[review.user.login] == nil {
+                latestByUser[review.user.login] = review.state
+            }
+        }
         let approved = latestByUser.values.filter { $0 == "APPROVED" }.count
         var allReviewers = Set(latestByUser.keys)
         for r in detail.requestedReviewers { allReviewers.insert(r.login) }
