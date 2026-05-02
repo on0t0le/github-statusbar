@@ -74,7 +74,7 @@ actor GitHubService: GitHubServiceProtocol {
 
     private struct PRReview: Decodable {
         let state: String
-        let user: GitHubUser
+        let user: GitHubUser?
     }
 
     private struct CheckRunsResponse: Decodable {
@@ -97,7 +97,7 @@ actor GitHubService: GitHubServiceProtocol {
               let detail = try? JSONDecoder().decode(PRDetail.self, from: data) else {
             return false
         }
-        return !detail.requestedReviewers.isEmpty
+        return !detail.requestedReviewers.isEmpty || !detail.requestedTeams.isEmpty
     }
 
     func fetchEnrichments(prs: [PullRequest], token: String) async -> [Int: PREnrichment] {
@@ -128,10 +128,11 @@ actor GitHubService: GitHubServiceProtocol {
 
         var latestByUser: [String: String] = [:]
         for review in reviews {
+            guard let login = review.user?.login else { continue }
             if review.state != "COMMENTED" {
-                latestByUser[review.user.login] = review.state
-            } else if latestByUser[review.user.login] == nil {
-                latestByUser[review.user.login] = review.state
+                latestByUser[login] = review.state
+            } else if latestByUser[login] == nil {
+                latestByUser[login] = review.state
             }
         }
         let approved = latestByUser.values.filter { $0 == "APPROVED" }.count
