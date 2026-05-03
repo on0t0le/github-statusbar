@@ -62,40 +62,20 @@ xcodebuild archive \
   -archivePath build/GitHubWidget.xcarchive \
   ARCHS=arm64 \
   ONLY_ACTIVE_ARCH=NO \
-  CODE_SIGN_IDENTITY="-"
+  CODE_SIGN_IDENTITY="-" \
+  SKIP_INSTALL=NO \
+  INSTALL_PATH=/Applications
 ```
 
 `CODE_SIGN_IDENTITY="-"` signs ad-hoc (no Apple Developer account needed). For notarization, replace with your Developer ID identity.
 
-### 3. Export the .app
+`SKIP_INSTALL=NO` + `INSTALL_PATH=/Applications` are already set in `project.yml` — these flags are shown for clarity and can be omitted.
 
-```bash
-xcodebuild -exportArchive \
-  -archivePath build/GitHubWidget.xcarchive \
-  -exportPath build/export \
-  -exportOptionsPlist ExportOptions.plist
-```
-
-Create `ExportOptions.plist` in the repo root:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>method</key>
-  <string>mac-application</string>
-  <key>destination</key>
-  <string>export</string>
-</dict>
-</plist>
-```
-
-### 4. Package with pkgbuild
+### 3. Package with pkgbuild
 
 ```bash
 mkdir -p build/pkg-root/Applications
-ditto build/export/GitHubWidget.app build/pkg-root/Applications/GitHubWidget.app
+ditto build/GitHubWidget.xcarchive/Products/Applications/GitHubWidget.app build/pkg-root/Applications/GitHubWidget.app
 
 pkgbuild \
   --root build/pkg-root \
@@ -107,7 +87,7 @@ pkgbuild \
 
 The `.pkg` installs `GitHubWidget.app` to `/Applications`.
 
-### 5. (Optional) Sign and notarize
+### 4. (Optional) Sign and notarize
 
 Sign the package with a Developer ID Installer certificate:
 
