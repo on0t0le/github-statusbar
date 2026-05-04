@@ -136,13 +136,13 @@ actor GitHubService: GitHubServiceProtocol {
             }
         }
         let approved = latestByUser.values.filter { $0 == "APPROVED" }.count
-        var allReviewers = Set(latestByUser.keys)
-        for r in detail.requestedReviewers { allReviewers.insert(r.login) }
-        for t in detail.requestedTeams { allReviewers.insert("team:\(t.slug)") }
+        let pendingIndividuals = detail.requestedReviewers.count
+        let pendingTeams = max(0, detail.requestedTeams.count - approved)
+        let totalReviewers = approved + pendingIndividuals + pendingTeams
 
         return PREnrichment(
             approvedReviewers: approved,
-            totalReviewers: allReviewers.count,
+            totalReviewers: totalReviewers,
             checksPassed: checks.passed,
             checksFailed: checks.failed,
             checksTotal: checks.total
