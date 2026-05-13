@@ -25,7 +25,9 @@
 		C059072488871B4DF25569A1 /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827F837D2CD6555192058DE5 /* PopoverView.swift */; };
 		D3A43CA5B01D51103428359D /* PRStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC4ED0F0C5DF6566E19253F /* PRStore.swift */; };
 		D900E5F7C295488574B6852B /* NotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F039B1F8EC036156F205452 /* NotificationServiceTests.swift */; };
+		DA41218CE206DE182BF36580 /* AccountStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9431E9ACA05EC709AFAFC7AB /* AccountStoreTests.swift */; };
 		DCB87E0A80CA3E454844B5A1 /* PRStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB55CAA59BAE190D5443D4BC /* PRStoreTests.swift */; };
+		E7BC82B1C65BD0ACB788BF37 /* AccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F5D96EC5ABC1F5ADE3FCA5B /* AccountStore.swift */; };
 		F01FA6C3AC3AC48031D827E9 /* GitHubWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35ACD4EF906973F1C84163C4 /* GitHubWidgetApp.swift */; };
 /* End PBXBuildFile section */
 
@@ -53,10 +55,12 @@
 		6A4B7E46EE14635E9AB4E217 /* PullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequest.swift; sourceTree = "<group>"; };
 		6EC4ED0F0C5DF6566E19253F /* PRStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRStore.swift; sourceTree = "<group>"; };
 		6F039B1F8EC036156F205452 /* NotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationServiceTests.swift; sourceTree = "<group>"; };
+		6F5D96EC5ABC1F5ADE3FCA5B /* AccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStore.swift; sourceTree = "<group>"; };
 		827F837D2CD6555192058DE5 /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
 		842E459B3AEBCB61D4EBDEFB /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		85E1A41468C97DD078B4922D /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		915E5940671CDE314646B938 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9431E9ACA05EC709AFAFC7AB /* AccountStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStoreTests.swift; sourceTree = "<group>"; };
 		A5D1058EFB0930A78DFF4AD3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B8F05DF6DFD2941DC129819F /* GitHubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubService.swift; sourceTree = "<group>"; };
 		BB55CAA59BAE190D5443D4BC /* PRStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRStoreTests.swift; sourceTree = "<group>"; };
@@ -80,6 +84,7 @@
 		2C6E79F4DB453E906513D09E /* Store */ = {
 			isa = PBXGroup;
 			children = (
+				6F5D96EC5ABC1F5ADE3FCA5B /* AccountStore.swift */,
 				6EC4ED0F0C5DF6566E19253F /* PRStore.swift */,
 			);
 			path = Store;
@@ -103,6 +108,7 @@
 		5CEF122428F8BCA099113543 /* GitHubWidgetTests */ = {
 			isa = PBXGroup;
 			children = (
+				9431E9ACA05EC709AFAFC7AB /* AccountStoreTests.swift */,
 				52C18DCE67D9A3E85EDC6244 /* AccountTests.swift */,
 				1031C8F636AFBB434E85E054 /* GitHubServiceTests.swift */,
 				230D5B482F7A05DAEB70CB77 /* KeychainHelperTests.swift */,
@@ -274,6 +280,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D16EC1DAA2F2E7E82865D8C /* Account.swift in Sources */,
+				E7BC82B1C65BD0ACB788BF37 /* AccountStore.swift in Sources */,
 				1D6D49DCB2B71D3568FF7F51 /* AppDelegate.swift in Sources */,
 				2C45D2037DE4A63D9C938BF4 /* GitHubError.swift in Sources */,
 				5ACB52482A6C3D63E60359B9 /* GitHubService.swift in Sources */,
@@ -292,6 +299,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA41218CE206DE182BF36580 /* AccountStoreTests.swift in Sources */,
 				BF5E8762CF0F7E443920498D /* AccountTests.swift in Sources */,
 				9E3071512DAF49492B1EF550 /* GitHubServiceTests.swift in Sources */,
 				5CCD064ADF41FBD66DF1B53A /* KeychainHelperTests.swift in Sources */,
