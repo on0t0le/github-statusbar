@@ -6,7 +6,16 @@ import UserNotifications
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
-    private let store = PRStore()
+    private let accountStore = AccountStore()
+    private lazy var store: PRStore = {
+        let account = accountStore.accounts.first ?? Account(
+            id: UUID(),
+            name: "Account 1",
+            username: UserDefaults.standard.string(forKey: "github_username") ?? "",
+            orgFilter: UserDefaults.standard.string(forKey: "github_org_filter") ?? ""
+        )
+        return PRStore(account: account)
+    }()
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     private var updateWatcher: DispatchSourceFileSystemObject?
