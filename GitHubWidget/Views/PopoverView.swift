@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct PopoverView: View {
-    @ObservedObject var store: PRStore
+    let accountStores: [(account: Account, store: PRStore)]
+    let accountStore: AccountStore
     var onClose: (() -> Void)?
     @State private var showSettings = false
+
+    private var showAccountHeaders: Bool { accountStores.count > 1 }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,7 +18,7 @@ struct PopoverView: View {
         }
         .frame(width: 340)
         .sheet(isPresented: $showSettings, onDismiss: { onClose?() }) {
-            SettingsView(store: store)
+            SettingsView(accountStore: accountStore)
         }
     }
 
@@ -25,12 +28,12 @@ struct PopoverView: View {
                 .font(.headline)
             Spacer()
             Button {
-                Task { await store.refresh() }
+                for (_, store) in accountStores { Task { await store.refresh() } }
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.plain)
-            .disabled(store.isLoading)
+            .disabled(accountStores.contains { $0.store.isLoading })
             Button { showSettings = true } label: {
                 Image(systemName: "gear")
             }
@@ -48,33 +51,20 @@ struct PopoverView: View {
 
     @ViewBuilder
     private var contentView: some View {
-        if let error = store.error {
-            errorView(error)
-        } else if store.waitingOnMe.isEmpty && store.readyToMerge.isEmpty && store.inProgress.isEmpty && !store.isLoading {
-            emptyStateView
+        if accountStores.isEmpty {
+            Text("No accounts configured")
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding()
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if !store.waitingOnMe.isEmpty {
-                        SectionHeaderView(emoji: "👀", title: "WAITING ON ME", count: store.waitingOnMe.count)
-                        ForEach(store.waitingOnMe) { pr in
-                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
-                            Divider().padding(.leading, 12)
-                        }
-                    }
-                    if !store.readyToMerge.isEmpty {
-                        SectionHeaderView(emoji: "✅", title: "READY TO MERGE", count: store.readyToMerge.count)
-                        ForEach(store.readyToMerge) { pr in
-                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
-                            Divider().padding(.leading, 12)
-                        }
-                    }
-                    if !store.inProgress.isEmpty {
-                        SectionHeaderView(emoji: "🔄", title: "IN PROGRESS", count: store.inProgress.count)
-                        ForEach(store.inProgress) { pr in
-                            PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
-                            Divider().padding(.leading, 12)
-                        }
+                    ForEach(accountStores, id: \.account.id) { (account, store) in
+                        AccountSectionView(
+                            account: account,
+                            store: store,
+                            showAccountHeader: showAccountHeaders
+                        )
                     }
                 }
             }
@@ -84,12 +74,12 @@ struct PopoverView: View {
 
     private var footerView: some View {
         HStack(spacing: 6) {
-            if store.isLoading {
+            if accountStores.contains(where: { $0.store.isLoading }) {
                 ProgressView().scaleEffect(0.6)
                 Text("Refreshing…")
                     .font(.caption)
                     .foregroundColor(.secondary)
-            } else if let date = store.lastUpdated {
+            } else if let date = accountStores.compactMap(\.store.lastUpdated).max() {
                 Text("Updated \(date, formatter: Self.relativeFormatter)")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -103,26 +93,6 @@ struct PopoverView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-    }
-
-    private func errorView(_ error: GitHubError) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle")
-                .foregroundColor(.orange)
-                .font(.title2)
-            Text(error.userMessage)
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
-    }
-
-    private var emptyStateView: some View {
-        Text("No open PRs")
-            .foregroundColor(.secondary)
-            .frame(maxWidth: .infinity)
-            .padding()
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {

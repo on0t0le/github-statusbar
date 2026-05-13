@@ -5,8 +5,9 @@ import XCTest
 final class PRStoreTests: XCTestCase {
 
     func test_refresh_setsNotConfiguredError_whenNoPAT() async {
-        let store = PRStore(service: MockGitHubService())
-        KeychainHelper.delete(key: "github_pat")
+        let account = Account.fixture()
+        let store = PRStore(account: account, service: MockGitHubService())
+        KeychainHelper.delete(key: account.keychainKey)
 
         await store.refresh()
 
@@ -15,6 +16,7 @@ final class PRStoreTests: XCTestCase {
     }
 
     func test_refresh_populatesCategories_onSuccess() async {
+        let account = Account.fixture()
         let waiting = PullRequest.fixture(id: 1)
         let ready = PullRequest.fixture(id: 2)
         let inProg = PullRequest.fixture(id: 3)
@@ -24,10 +26,9 @@ final class PRStoreTests: XCTestCase {
             assigned: [inProg],
             readyToMerge: [ready]
         )
-        let service = MockGitHubService(result: mockResult)
-        let store = PRStore(service: service)
-        KeychainHelper.save(key: "github_pat", value: "test-token")
-        defer { KeychainHelper.delete(key: "github_pat") }
+        let store = PRStore(account: account, service: MockGitHubService(result: mockResult))
+        KeychainHelper.save(key: account.keychainKey, value: "test-token")
+        defer { KeychainHelper.delete(key: account.keychainKey) }
 
         await store.refresh()
 
@@ -39,10 +40,10 @@ final class PRStoreTests: XCTestCase {
     }
 
     func test_refresh_setsError_onServiceThrow() async {
-        let service = MockGitHubService(error: .unauthorized)
-        let store = PRStore(service: service)
-        KeychainHelper.save(key: "github_pat", value: "bad-token")
-        defer { KeychainHelper.delete(key: "github_pat") }
+        let account = Account.fixture()
+        let store = PRStore(account: account, service: MockGitHubService(error: .unauthorized))
+        KeychainHelper.save(key: account.keychainKey, value: "bad-token")
+        defer { KeychainHelper.delete(key: account.keychainKey) }
 
         await store.refresh()
 
@@ -50,15 +51,16 @@ final class PRStoreTests: XCTestCase {
     }
 
     func test_totalCount_sumsCategoryLengths() async {
+        let account = Account.fixture()
         let mockResult = PRFetchResult(
             reviewRequested: [.fixture(id: 1), .fixture(id: 2)],
             changesRequested: [],
             assigned: [.fixture(id: 3)],
             readyToMerge: []
         )
-        let store = PRStore(service: MockGitHubService(result: mockResult))
-        KeychainHelper.save(key: "github_pat", value: "token")
-        defer { KeychainHelper.delete(key: "github_pat") }
+        let store = PRStore(account: account, service: MockGitHubService(result: mockResult))
+        KeychainHelper.save(key: account.keychainKey, value: "token")
+        defer { KeychainHelper.delete(key: account.keychainKey) }
 
         await store.refresh()
 
@@ -111,12 +113,13 @@ final class MockNotificationService: NotificationServiceProtocol, @unchecked Sen
 extension PRStoreTests {
 
     func test_markAllSeen_clearsUnseenPRIds() async {
+        let account = Account.fixture()
         let mockNotif = MockNotificationService(diffResult: [1, 2])
-        let store = PRStore(service: MockGitHubService(), notificationService: mockNotif)
+        let store = PRStore(account: account, service: MockGitHubService(), notificationService: mockNotif)
         UserDefaults.standard.set(true, forKey: "notifications_enabled")
         defer { UserDefaults.standard.removeObject(forKey: "notifications_enabled") }
-        KeychainHelper.save(key: "github_pat", value: "token")
-        defer { KeychainHelper.delete(key: "github_pat") }
+        KeychainHelper.save(key: account.keychainKey, value: "token")
+        defer { KeychainHelper.delete(key: account.keychainKey) }
 
         await store.refresh()
         XCTAssertEqual(store.unseenPRIds, [1, 2])
@@ -126,12 +129,13 @@ extension PRStoreTests {
     }
 
     func test_unseenPRIds_accumulatesAcrossRefreshes() async {
+        let account = Account.fixture()
         let mockNotif = MockNotificationService(diffResult: [1])
-        let store = PRStore(service: MockGitHubService(), notificationService: mockNotif)
+        let store = PRStore(account: account, service: MockGitHubService(), notificationService: mockNotif)
         UserDefaults.standard.set(true, forKey: "notifications_enabled")
         defer { UserDefaults.standard.removeObject(forKey: "notifications_enabled") }
-        KeychainHelper.save(key: "github_pat", value: "token")
-        defer { KeychainHelper.delete(key: "github_pat") }
+        KeychainHelper.save(key: account.keychainKey, value: "token")
+        defer { KeychainHelper.delete(key: account.keychainKey) }
 
         await store.refresh()
         mockNotif.diffResult = [2]
@@ -141,12 +145,13 @@ extension PRStoreTests {
     }
 
     func test_unseenPRIds_notPopulated_whenNotificationsDisabled() async {
+        let account = Account.fixture()
         let mockNotif = MockNotificationService(diffResult: [99])
-        let store = PRStore(service: MockGitHubService(), notificationService: mockNotif)
+        let store = PRStore(account: account, service: MockGitHubService(), notificationService: mockNotif)
         UserDefaults.standard.set(false, forKey: "notifications_enabled")
         defer { UserDefaults.standard.removeObject(forKey: "notifications_enabled") }
-        KeychainHelper.save(key: "github_pat", value: "token")
-        defer { KeychainHelper.delete(key: "github_pat") }
+        KeychainHelper.save(key: account.keychainKey, value: "token")
+        defer { KeychainHelper.delete(key: account.keychainKey) }
 
         await store.refresh()
         XCTAssertTrue(store.unseenPRIds.isEmpty)

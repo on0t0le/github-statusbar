@@ -11,16 +11,19 @@ final class PRStore: ObservableObject {
     @Published var lastUpdated: Date?
     @Published private(set) var totalCount: Int = 0
     @Published private(set) var enrichments: [Int: PREnrichment] = [:]
-
     @Published private(set) var unseenPRIds: Set<Int> = []
+
+    let account: Account
     private var previousResult: PRFetchResult?
     private let service: any GitHubServiceProtocol
     private let notificationService: any NotificationServiceProtocol
 
     init(
+        account: Account,
         service: any GitHubServiceProtocol = GitHubService.shared,
         notificationService: any NotificationServiceProtocol = NotificationService.shared
     ) {
+        self.account = account
         self.service = service
         self.notificationService = notificationService
     }
@@ -30,20 +33,26 @@ final class PRStore: ObservableObject {
     }
 
     func refresh() async {
-        guard let token = KeychainHelper.load(key: "github_pat"), !token.isEmpty else {
+        guard let token = KeychainHelper.load(key: account.keychainKey), !token.isEmpty else {
             error = .notConfigured
             return
         }
-        let username = UserDefaults.standard.string(forKey: "github_username") ?? ""
-        let orgFilter = UserDefaults.standard.string(forKey: "github_org_filter") ?? ""
 
         isLoading = true
         error = nil
 
         do {
-            let result = try await service.fetchPRs(token: token, username: username, orgFilter: orgFilter)
+            let result = try await service.fetchPRs(
+                token: token,
+                username: account.username,
+                orgFilter: account.orgFilter
+            )
             if UserDefaults.standard.bool(forKey: "notifications_enabled") {
-                let newUnseen = notificationService.diff(old: previousResult, new: result, username: username)
+                let newUnseen = notificationService.diff(
+                    old: previousResult,
+                    new: result,
+                    username: account.username
+                )
                 unseenPRIds = unseenPRIds.union(newUnseen)
             }
             previousResult = result
@@ -68,6 +77,4 @@ final class PRStore: ObservableObject {
 
         isLoading = false
     }
-
-
 }

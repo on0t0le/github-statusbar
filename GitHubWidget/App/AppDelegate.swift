@@ -6,23 +6,91 @@ import UserNotifications
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
-    private let store = PRStore()
+    private let accountStore = AccountStore()
+    private var accountStores: [(account: Account, store: PRStore)] = []
     private var cancellables = Set<AnyCancellable>()
+    private var badgeCancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     private var updateWatcher: DispatchSourceFileSystemObject?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         startWatchingForUpdates()
         UNUserNotificationCenter.current().delegate = NotificationService.shared
+        accountStore.migrateIfNeeded()
+        rebuildAccountStores(from: accountStore.accounts)
         setupStatusItem()
         setupPopover()
-        setupBadgeObserver()
+        rebindBadgeObservers()
         startTimer()
         if UserDefaults.standard.bool(forKey: "notifications_enabled") {
             Task { await NotificationService.shared.requestPermission() }
         }
-        KeychainHelper.migrateACLIfNeeded(key: "github_pat")
-        Task { await store.refresh() }
+        for (account, _) in accountStores {
+            KeychainHelper.migrateACLIfNeeded(key: account.keychainKey)
+        }
+        accountStore.$accounts
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] accounts in
+                guard let self else { return }
+                self.rebuildAccountStores(from: accounts)
+                self.rebindBadgeObservers()
+                self.refreshPopover()
+                self.refreshAll()
+            }
+            .store(in: &cancellables)
+        var notificationsWasEnabled = UserDefaults.standard.bool(forKey: "notifications_enabled")
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                let isEnabled = UserDefaults.standard.bool(forKey: "notifications_enabled")
+                if !isEnabled && notificationsWasEnabled {
+                    for (_, store) in self.accountStores { store.markAllSeen() }
+                }
+                notificationsWasEnabled = isEnabled
+            }
+            .store(in: &cancellables)
+        refreshAll()
+    }
+
+    private func rebuildAccountStores(from accounts: [Account]) {
+        var next: [(account: Account, store: PRStore)] = []
+        for account in accounts {
+            if let existing = accountStores.first(where: { $0.account.id == account.id }) {
+                next.append((account: account, store: existing.store))
+            } else {
+                next.append((account: account, store: PRStore(account: account)))
+            }
+        }
+        accountStores = next
+    }
+
+    private func rebindBadgeObservers() {
+        badgeCancellables.removeAll()
+        for (_, store) in accountStores {
+            store.$totalCount
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.updateBadge() }
+                .store(in: &badgeCancellables)
+            store.$unseenPRIds
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.updateDot() }
+                .store(in: &badgeCancellables)
+        }
+    }
+
+    private func refreshPopover() {
+        (popover.contentViewController as? NSHostingController<PopoverView>)?.rootView =
+            PopoverView(accountStores: accountStores, accountStore: accountStore, onClose: { [weak self] in
+                self?.popover.performClose(nil)
+            })
+    }
+
+    private func refreshAll() {
+        for (_, store) in accountStores {
+            Task { await store.refresh() }
+        }
     }
 
     private var contextMenu: NSMenu = {
@@ -35,14 +103,12 @@ import UserNotifications
         guard let execPath = Bundle.main.executablePath else { return }
         let fd = open(execPath, O_EVTONLY)
         guard fd >= 0 else { return }
-
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd,
             eventMask: [.write, .rename, .delete],
             queue: .main
         )
         source.setEventHandler { [weak self] in
-            // Delay to let the replacement finish before reading the new bundle.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self?.relaunchIfUpdated()
             }
@@ -59,7 +125,6 @@ import UserNotifications
               let diskVersion = plist["CFBundleVersion"] as? String,
               let runningVersion = Bundle.main.infoDictionary?["CFBundleVersion"] as? String,
               diskVersion != runningVersion else { return }
-
         updateWatcher?.cancel()
         updateWatcher = nil
         let bundleURL = URL(fileURLWithPath: Bundle.main.bundlePath)
@@ -95,36 +160,26 @@ import UserNotifications
         popover.contentSize = NSSize(width: 340, height: 440)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(
-            rootView: PopoverView(store: store, onClose: { [weak self] in
+            rootView: PopoverView(accountStores: accountStores, accountStore: accountStore, onClose: { [weak self] in
                 self?.popover.performClose(nil)
             })
         )
     }
 
-    private func setupBadgeObserver() {
-        store.$totalCount
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] count in self?.updateBadge(count: count) }
-            .store(in: &cancellables)
-
-        store.$unseenPRIds
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (ids: Set<Int>) in self?.updateDot(hasUnseen: !ids.isEmpty) }
-            .store(in: &cancellables)
-    }
-
     private func startTimer() {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            Task { await self?.store.refresh() }
+            self?.refreshAll()
         }
     }
 
-    private func updateBadge(count: Int) {
+    private func updateBadge() {
+        let count = accountStores.map(\.store.totalCount).reduce(0, +)
         statusItem.button?.title = count > 0 ? " \(count)" : ""
     }
 
-    private func updateDot(hasUnseen: Bool) {
+    private func updateDot() {
         guard let button = statusItem.button else { return }
+        let hasUnseen = accountStores.contains { !$0.store.unseenPRIds.isEmpty }
         let base = NSImage(systemSymbolName: "arrow.triangle.pull", accessibilityDescription: "GitHub PRs")!
         guard hasUnseen else {
             button.image = base
@@ -155,7 +210,7 @@ import UserNotifications
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
-            store.markAllSeen()
+            for (_, store) in accountStores { store.markAllSeen() }
         }
     }
 }

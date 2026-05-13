@@ -32,6 +32,10 @@ Register the app as a macOS login item directly from Settings — no System Sett
 
 Scope the PR list to a specific org (`myorg`) or repo (`myorg/myrepo`). Leave blank to see all your PRs across GitHub.
 
+### Multiple accounts
+
+Connect up to 5 GitHub accounts (personal, work, client orgs) simultaneously. Each account is shown as its own labelled section in the popover. Add, edit, and remove accounts from Settings — tokens are stored per-account in the macOS Keychain.
+
 ### Secure token storage
 
 Your GitHub Personal Access Token is stored in the macOS Keychain, never in plaintext.
@@ -50,10 +54,12 @@ Copy the token (starts with `ghp_`).
 
 1. Click the menubar icon
 2. Click the ⚙ gear icon to open Settings
-3. Paste your token in the **Personal Access Token** field
-4. Enter your **GitHub username**
+3. Click **+** to add an account
+4. Enter a name (e.g. "Personal"), your GitHub username, and paste your token
 5. Optionally enter an org or repo filter
-6. Click **Save**
+6. Click **Add**
+
+Repeat for additional accounts (up to 5).
 
 ## Requirements
 
