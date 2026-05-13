@@ -35,7 +35,11 @@ struct SettingsView: View {
                     do {
                         if enabled { try SMAppService.mainApp.register() }
                         else { try SMAppService.mainApp.unregister() }
-                    } catch {}
+                    } catch {
+                        #if DEBUG
+                        print("[LaunchAtLogin] \(enabled ? "register" : "unregister") failed: \(error)")
+                        #endif
+                    }
                     launchAtLogin = SMAppService.mainApp.status == .enabled
                 }
             ))

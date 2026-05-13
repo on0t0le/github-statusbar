@@ -29,6 +29,7 @@ import UserNotifications
             KeychainHelper.migrateACLIfNeeded(key: account.keychainKey)
         }
         accountStore.$accounts
+            .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] accounts in
                 guard let self else { return }
@@ -36,6 +37,18 @@ import UserNotifications
                 self.rebindBadgeObservers()
                 self.refreshPopover()
                 self.refreshAll()
+            }
+            .store(in: &cancellables)
+        var notificationsWasEnabled = UserDefaults.standard.bool(forKey: "notifications_enabled")
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                let isEnabled = UserDefaults.standard.bool(forKey: "notifications_enabled")
+                if !isEnabled && notificationsWasEnabled {
+                    for (_, store) in self.accountStores { store.markAllSeen() }
+                }
+                notificationsWasEnabled = isEnabled
             }
             .store(in: &cancellables)
         refreshAll()

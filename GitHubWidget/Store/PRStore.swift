@@ -13,7 +13,7 @@ final class PRStore: ObservableObject {
     @Published private(set) var enrichments: [Int: PREnrichment] = [:]
     @Published private(set) var unseenPRIds: Set<Int> = []
 
-    private(set) var account: Account
+    let account: Account
     private var previousResult: PRFetchResult?
     private let service: any GitHubServiceProtocol
     private let notificationService: any NotificationServiceProtocol
