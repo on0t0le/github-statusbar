@@ -103,8 +103,14 @@ import UserNotifications
         popover = NSPopover()
         popover.contentSize = NSSize(width: 340, height: 440)
         popover.behavior = .transient
+        let account = accountStore.accounts.first ?? Account(
+            id: UUID(),
+            name: "Account 1",
+            username: UserDefaults.standard.string(forKey: "github_username") ?? "",
+            orgFilter: UserDefaults.standard.string(forKey: "github_org_filter") ?? ""
+        )
         popover.contentViewController = NSHostingController(
-            rootView: PopoverView(store: store, onClose: { [weak self] in
+            rootView: PopoverView(accountStores: [(account: account, store: store)], onClose: { [weak self] in
                 self?.popover.performClose(nil)
             })
         )

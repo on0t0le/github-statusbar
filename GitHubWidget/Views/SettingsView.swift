@@ -2,7 +2,6 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
-    let store: PRStore
     @Environment(\.dismiss) private var dismiss
     @State private var token = ""
     @State private var username = ""
@@ -51,8 +50,6 @@ struct SettingsView: View {
                             let granted = await NotificationService.shared.requestPermission()
                             if !granted { notificationsEnabled = false }
                         }
-                    } else {
-                        store.markAllSeen()
                     }
                 }
             ))
