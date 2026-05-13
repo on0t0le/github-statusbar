@@ -9,6 +9,7 @@ import UserNotifications
     private let accountStore = AccountStore()
     private var accountStores: [(account: Account, store: PRStore)] = []
     private var cancellables = Set<AnyCancellable>()
+    private var badgeCancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     private var updateWatcher: DispatchSourceFileSystemObject?
 
@@ -34,10 +35,10 @@ import UserNotifications
                 self.rebuildAccountStores(from: accounts)
                 self.rebindBadgeObservers()
                 self.refreshPopover()
-                Task { await self.refreshAll() }
+                self.refreshAll()
             }
             .store(in: &cancellables)
-        Task { await refreshAll() }
+        refreshAll()
     }
 
     private func rebuildAccountStores(from accounts: [Account]) {
@@ -53,26 +54,16 @@ import UserNotifications
     }
 
     private func rebindBadgeObservers() {
-        cancellables.removeAll()
-        accountStore.$accounts
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] accounts in
-                guard let self else { return }
-                self.rebuildAccountStores(from: accounts)
-                self.rebindBadgeObservers()
-                self.refreshPopover()
-                Task { await self.refreshAll() }
-            }
-            .store(in: &cancellables)
+        badgeCancellables.removeAll()
         for (_, store) in accountStores {
             store.$totalCount
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in self?.updateBadge() }
-                .store(in: &cancellables)
+                .store(in: &badgeCancellables)
             store.$unseenPRIds
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in self?.updateDot() }
-                .store(in: &cancellables)
+                .store(in: &badgeCancellables)
         }
     }
 
@@ -83,7 +74,7 @@ import UserNotifications
             })
     }
 
-    private func refreshAll() async {
+    private func refreshAll() {
         for (_, store) in accountStores {
             Task { await store.refresh() }
         }
@@ -164,7 +155,7 @@ import UserNotifications
 
     private func startTimer() {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            Task { await self?.refreshAll() }
+            self?.refreshAll()
         }
     }
 
