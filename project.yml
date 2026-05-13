@@ -9,6 +9,8 @@ targets:
     platform: macOS
     sources:
       - path: GitHubWidget
+    dependencies:
+      - sdk: ServiceManagement.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.github-widget.GitHubWidget

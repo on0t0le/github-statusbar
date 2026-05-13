@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0D7A6146C5ED2C3C5058D48B /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D5E57325D9573DE5950C5F40 /* ServiceManagement.framework */; };
 		1D6D49DCB2B71D3568FF7F51 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D1058EFB0930A78DFF4AD3 /* AppDelegate.swift */; };
 		25197B746898D4E9FDA78455 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E1A41468C97DD078B4922D /* NotificationService.swift */; };
 		2C45D2037DE4A63D9C938BF4 /* GitHubError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403B466C30960E874ED50F82 /* GitHubError.swift */; };
@@ -56,8 +57,20 @@
 		B8F05DF6DFD2941DC129819F /* GitHubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubService.swift; sourceTree = "<group>"; };
 		BB55CAA59BAE190D5443D4BC /* PRStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRStoreTests.swift; sourceTree = "<group>"; };
 		CC4671DC37394AFBAAE55253 /* PullRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequestTests.swift; sourceTree = "<group>"; };
+		D5E57325D9573DE5950C5F40 /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
 		E59D1735827A7EC8FA8EB387 /* GitHubWidget.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GitHubWidget.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		614A40C905E4EE733821270F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D7A6146C5ED2C3C5058D48B /* ServiceManagement.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		2C6E79F4DB453E906513D09E /* Store */ = {
@@ -121,6 +134,14 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
+		C02A2E500E006051FCEE40E2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D5E57325D9573DE5950C5F40 /* ServiceManagement.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		C6A581B1877610F13E734B39 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -154,6 +175,7 @@
 			children = (
 				2FFBEC98D10F7E6A9DC214DC /* GitHubWidget */,
 				5CEF122428F8BCA099113543 /* GitHubWidgetTests */,
+				C02A2E500E006051FCEE40E2 /* Frameworks */,
 				C6A581B1877610F13E734B39 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -185,6 +207,7 @@
 			buildPhases = (
 				1F043E3F2CFB9C1624D4E6A9 /* Sources */,
 				E157A9D90A541812432FF553 /* Resources */,
+				614A40C905E4EE733821270F /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -288,14 +311,16 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = GitHubWidget/Info.plist;
+				INSTALL_PATH = /Applications;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.github-widget.GitHubWidget";
 				SDKROOT = macosx;
+				SKIP_INSTALL = NO;
 			};
 			name = Release;
 		};
@@ -459,14 +484,16 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = GitHubWidget/Info.plist;
+				INSTALL_PATH = /Applications;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.github-widget.GitHubWidget";
 				SDKROOT = macosx;
+				SKIP_INSTALL = NO;
 			};
 			name = Debug;
 		};
