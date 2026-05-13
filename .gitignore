@@ -13,3 +13,6 @@ ExportOptions.plist
 # Xcode generated
 GitHubWidget.xcodeproj/project.xcworkspace/
 GitHubWidget.xcodeproj/xcuserdata/
+
+# Agent planning artifacts
+docs/superpowers/

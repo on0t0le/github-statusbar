@@ -60,10 +60,16 @@ struct SettingsView: View {
             Toggle("Launch at login", isOn: Binding(
                 get: { launchAtLogin },
                 set: { enabled in
-                    if enabled {
-                        try? SMAppService.mainApp.register()
-                    } else {
-                        try? SMAppService.mainApp.unregister()
+                    do {
+                        if enabled {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                    } catch {
+                        #if DEBUG
+                        print("[LaunchAtLogin] \(enabled ? "register" : "unregister") failed: \(error)")
+                        #endif
                     }
                     launchAtLogin = SMAppService.mainApp.status == .enabled
                 }
