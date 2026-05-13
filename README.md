@@ -1,24 +1,70 @@
 # GitHub PR Widget
 
-macOS menubar app showing GitHub pull requests that need your attention.
+A macOS menubar app that keeps your GitHub pull requests one click away.
 
-## What it shows
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5.0-orange)
 
-- **👀 Waiting on me** — review requested on your PRs, or changes requested that need your update
-- **✅ Ready to merge** — your PRs that have been approved
-- **🔄 In progress** — PRs assigned to you
+## Overview
 
-Badge count on the menubar icon shows the total PRs across all categories. Refreshes every 5 minutes. Click any PR to open it in your browser.
+GitHub PR Widget lives in your menubar and surfaces the PRs that need your attention — no browser tab required. It refreshes every 5 minutes and shows a badge count so you always know your workload at a glance.
 
-## Prerequisites
+## Features
 
-- macOS 13+
-- Xcode 15+
-- [Homebrew](https://brew.sh) (for xcodegen)
+### PR triage at a glance
 
-## Build & Run
+| Category | What it means |
+|---|---|
+| 👀 **Waiting on me** | Review requested, or changes requested on your own PR |
+| ✅ **Ready to merge** | Your PRs that have been approved |
+| 🔄 **In progress** | PRs assigned to you |
 
-```
+Click any PR in the list to open it in your browser.
+
+### Notifications
+
+Opt-in desktop notifications alert you when PR status changes — new review requests, approvals, and more. Toggle in Settings.
+
+### Launch at login
+
+Register the app as a macOS login item directly from Settings — no System Settings detour needed.
+
+### Org / repo filtering
+
+Scope the PR list to a specific org (`myorg`) or repo (`myorg/myrepo`). Leave blank to see all your PRs across GitHub.
+
+### Secure token storage
+
+Your GitHub Personal Access Token is stored in the macOS Keychain, never in plaintext.
+
+## Setup
+
+### 1. Generate a GitHub token
+
+Go to **github.com/settings/tokens → Generate new token (classic)**
+
+Required scopes: `repo`, `read:user`
+
+Copy the token (starts with `ghp_`).
+
+### 2. Configure the app
+
+1. Click the menubar icon
+2. Click the ⚙ gear icon to open Settings
+3. Paste your token in the **Personal Access Token** field
+4. Enter your **GitHub username**
+5. Optionally enter an org or repo filter
+6. Click **Save**
+
+## Requirements
+
+- macOS 13 Ventura or later
+- A GitHub account with a Personal Access Token
+
+---
+
+## Building from source
+
+```bash
 brew install xcodegen
 xcodegen generate
 open GitHubWidget.xcodeproj
@@ -26,35 +72,10 @@ open GitHubWidget.xcodeproj
 
 Press **⌘R** in Xcode to run.
 
-## Configuration
-
-1. **Generate a GitHub Personal Access Token**
-   - Go to github.com/settings/tokens → **Generate new token (classic)**
-   - Required scopes: `repo`, `read:user`
-   - Copy the generated token (starts with `ghp_`)
-
-2. **Configure the app**
-   - Click the menubar icon
-   - Click the ⚙ gear icon
-   - Paste your token in the **Personal Access Token** field
-   - Enter your **GitHub username**
-   - Optionally filter to a specific org (`myorg`) or repo (`myorg/myrepo`)
-   - Click **Save**
-
-The token is stored securely in your macOS Keychain.
-
-## Build a .pkg installer
-
-### 1. Generate the Xcode project
+### Package as .pkg
 
 ```bash
-brew install xcodegen
-xcodegen generate
-```
-
-### 2. Build a release archive
-
-```bash
+# Archive
 xcodebuild archive \
   -project GitHubWidget.xcodeproj \
   -scheme GitHubWidget \
@@ -62,50 +83,19 @@ xcodebuild archive \
   -archivePath build/GitHubWidget.xcarchive \
   ARCHS=arm64 \
   ONLY_ACTIVE_ARCH=NO \
-  CODE_SIGN_IDENTITY="-" \
-  SKIP_INSTALL=NO \
-  INSTALL_PATH=/Applications
-```
+  CODE_SIGN_IDENTITY="-"
 
-`CODE_SIGN_IDENTITY="-"` signs ad-hoc (no Apple Developer account needed). For notarization, replace with your Developer ID identity.
-
-`SKIP_INSTALL=NO` + `INSTALL_PATH=/Applications` are already set in `project.yml` — these flags are shown for clarity and can be omitted.
-
-### 3. Package with pkgbuild
-
-```bash
+# Package
 mkdir -p build/pkg-root/Applications
-ditto build/GitHubWidget.xcarchive/Products/Applications/GitHubWidget.app build/pkg-root/Applications/GitHubWidget.app
+ditto build/GitHubWidget.xcarchive/Products/Applications/GitHubWidget.app \
+  build/pkg-root/Applications/GitHubWidget.app
 
 pkgbuild \
   --root build/pkg-root \
   --identifier com.github-widget.GitHubWidget \
-  --version 1.0.0 \
+  --version 1.1.1 \
   --install-location / \
   build/GitHubWidget.pkg
 ```
 
-The `.pkg` installs `GitHubWidget.app` to `/Applications`.
-
-### 4. (Optional) Sign and notarize
-
-Sign the package with a Developer ID Installer certificate:
-
-```bash
-productsign \
-  --sign "Developer ID Installer: Your Name (TEAMID)" \
-  build/GitHubWidget.pkg \
-  build/GitHubWidget-signed.pkg
-```
-
-Then submit for notarization:
-
-```bash
-xcrun notarytool submit build/GitHubWidget-signed.pkg \
-  --apple-id you@example.com \
-  --team-id TEAMID \
-  --password "@keychain:AC_PASSWORD" \
-  --wait
-
-xcrun stapler staple build/GitHubWidget-signed.pkg
-```
+`CODE_SIGN_IDENTITY="-"` signs ad-hoc (no Apple Developer account required). For distribution, replace with your Developer ID identity and run `productsign` + `xcrun notarytool`.
