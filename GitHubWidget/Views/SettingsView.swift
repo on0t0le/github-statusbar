@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct SettingsView: View {
     let store: PRStore
@@ -7,6 +8,7 @@ struct SettingsView: View {
     @State private var username = ""
     @State private var orgFilter = ""
     @AppStorage("notifications_enabled") private var notificationsEnabled = false
+    @State private var launchAtLogin = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -55,6 +57,24 @@ struct SettingsView: View {
                 }
             ))
 
+            Toggle("Launch at login", isOn: Binding(
+                get: { launchAtLogin },
+                set: { enabled in
+                    do {
+                        if enabled {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                    } catch {
+                        #if DEBUG
+                        print("[LaunchAtLogin] \(enabled ? "register" : "unregister") failed: \(error)")
+                        #endif
+                    }
+                    launchAtLogin = SMAppService.mainApp.status == .enabled
+                }
+            ))
+
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }
@@ -72,6 +92,7 @@ struct SettingsView: View {
         token = KeychainHelper.load(key: "github_pat") ?? ""
         username = UserDefaults.standard.string(forKey: "github_username") ?? ""
         orgFilter = UserDefaults.standard.string(forKey: "github_org_filter") ?? ""
+        launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
     private func save() {
