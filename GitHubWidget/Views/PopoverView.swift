@@ -58,10 +58,10 @@ struct PopoverView: View {
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(accountStores, id: \.account.id) { pair in
+                    ForEach(accountStores, id: \.account.id) { (account, store) in
                         AccountSectionView(
-                            account: pair.account,
-                            store: pair.store,
+                            account: account,
+                            store: store,
                             showAccountHeader: showAccountHeaders
                         )
                     }

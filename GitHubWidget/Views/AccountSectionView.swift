@@ -23,14 +23,11 @@ struct AccountSectionView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color(NSColor.separatorColor).opacity(0.2))
-        }
-
-        if let error = store.error, !showAccountHeader {
+            prListContent
+        } else if let error = store.error {
             errorView(error)
-        } else if !showAccountHeader && store.waitingOnMe.isEmpty && store.readyToMerge.isEmpty && store.inProgress.isEmpty && !store.isLoading {
+        } else if store.waitingOnMe.isEmpty && store.readyToMerge.isEmpty && store.inProgress.isEmpty && !store.isLoading {
             emptyStateView
-        } else if showAccountHeader && store.error != nil {
-            EmptyView()
         } else {
             prListContent
         }
