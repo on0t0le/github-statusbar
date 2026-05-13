@@ -74,7 +74,7 @@ struct SettingsView: View {
             }
 
             if accountStore.accounts.isEmpty {
-                Text("No accounts configured. Tap + to add one.")
+                Text("No accounts configured. Click + to add one.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.vertical, 4)
@@ -116,7 +116,7 @@ struct SettingsView: View {
 
 struct AccountEditView: View {
     @Environment(\.dismiss) private var dismiss
-    let accountStore: AccountStore
+    @ObservedObject var accountStore: AccountStore
     let account: Account?
 
     @State private var name: String = ""
