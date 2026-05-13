@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0D7A6146C5ED2C3C5058D48B /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D5E57325D9573DE5950C5F40 /* ServiceManagement.framework */; };
+		1D16EC1DAA2F2E7E82865D8C /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 601BEE7CA2FF34743E756F60 /* Account.swift */; };
 		1D6D49DCB2B71D3568FF7F51 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D1058EFB0930A78DFF4AD3 /* AppDelegate.swift */; };
 		25197B746898D4E9FDA78455 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E1A41468C97DD078B4922D /* NotificationService.swift */; };
 		2C45D2037DE4A63D9C938BF4 /* GitHubError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403B466C30960E874ED50F82 /* GitHubError.swift */; };
@@ -19,6 +20,7 @@
 		6A4710D34F42D490EEAC983D /* PullRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4671DC37394AFBAAE55253 /* PullRequestTests.swift */; };
 		98D710CB109C91889F3C287D /* PRRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E27CA80B82A4C7C9649B2E2 /* PRRowView.swift */; };
 		9E3071512DAF49492B1EF550 /* GitHubServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1031C8F636AFBB434E85E054 /* GitHubServiceTests.swift */; };
+		BF5E8762CF0F7E443920498D /* AccountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C18DCE67D9A3E85EDC6244 /* AccountTests.swift */; };
 		BFB9A23128E68AC39A194754 /* PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4B7E46EE14635E9AB4E217 /* PullRequest.swift */; };
 		C059072488871B4DF25569A1 /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827F837D2CD6555192058DE5 /* PopoverView.swift */; };
 		D3A43CA5B01D51103428359D /* PRStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC4ED0F0C5DF6566E19253F /* PRStore.swift */; };
@@ -44,7 +46,9 @@
 		35ACD4EF906973F1C84163C4 /* GitHubWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubWidgetApp.swift; sourceTree = "<group>"; };
 		3E27CA80B82A4C7C9649B2E2 /* PRRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRRowView.swift; sourceTree = "<group>"; };
 		403B466C30960E874ED50F82 /* GitHubError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubError.swift; sourceTree = "<group>"; };
+		52C18DCE67D9A3E85EDC6244 /* AccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountTests.swift; sourceTree = "<group>"; };
 		5B3D4636CC768F0A494320D2 /* GitHubWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitHubWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		601BEE7CA2FF34743E756F60 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		660465605B77C84686278962 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		6A4B7E46EE14635E9AB4E217 /* PullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PullRequest.swift; sourceTree = "<group>"; };
 		6EC4ED0F0C5DF6566E19253F /* PRStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRStore.swift; sourceTree = "<group>"; };
@@ -99,6 +103,7 @@
 		5CEF122428F8BCA099113543 /* GitHubWidgetTests */ = {
 			isa = PBXGroup;
 			children = (
+				52C18DCE67D9A3E85EDC6244 /* AccountTests.swift */,
 				1031C8F636AFBB434E85E054 /* GitHubServiceTests.swift */,
 				230D5B482F7A05DAEB70CB77 /* KeychainHelperTests.swift */,
 				6F039B1F8EC036156F205452 /* NotificationServiceTests.swift */,
@@ -121,6 +126,7 @@
 		91FEFAA5B47241457FA78B20 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				601BEE7CA2FF34743E756F60 /* Account.swift */,
 				6A4B7E46EE14635E9AB4E217 /* PullRequest.swift */,
 			);
 			path = Models;
@@ -267,6 +273,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D16EC1DAA2F2E7E82865D8C /* Account.swift in Sources */,
 				1D6D49DCB2B71D3568FF7F51 /* AppDelegate.swift in Sources */,
 				2C45D2037DE4A63D9C938BF4 /* GitHubError.swift in Sources */,
 				5ACB52482A6C3D63E60359B9 /* GitHubService.swift in Sources */,
@@ -285,6 +292,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BF5E8762CF0F7E443920498D /* AccountTests.swift in Sources */,
 				9E3071512DAF49492B1EF550 /* GitHubServiceTests.swift in Sources */,
 				5CCD064ADF41FBD66DF1B53A /* KeychainHelperTests.swift in Sources */,
 				D900E5F7C295488574B6852B /* NotificationServiceTests.swift in Sources */,
@@ -329,6 +337,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -346,6 +355,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
