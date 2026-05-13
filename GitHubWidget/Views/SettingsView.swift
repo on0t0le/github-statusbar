@@ -3,7 +3,7 @@ import ServiceManagement
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var accountStore = AccountStore()
+    @ObservedObject var accountStore: AccountStore
     @AppStorage("notifications_enabled") private var notificationsEnabled = false
     @State private var launchAtLogin = false
     @State private var editingAccount: Account? = nil

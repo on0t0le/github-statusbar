@@ -23,11 +23,22 @@ struct AccountSectionView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color(NSColor.separatorColor).opacity(0.2))
-            prListContent
-        } else if let error = store.error {
-            errorView(error)
+        }
+
+        if let error = store.error {
+            if !showAccountHeader {
+                errorView(error)
+            }
         } else if store.waitingOnMe.isEmpty && store.readyToMerge.isEmpty && store.inProgress.isEmpty && !store.isLoading {
-            emptyStateView
+            if !showAccountHeader {
+                emptyStateView
+            } else {
+                Text("No open PRs")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+            }
         } else {
             prListContent
         }

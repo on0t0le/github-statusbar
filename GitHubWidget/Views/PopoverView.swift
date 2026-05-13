@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PopoverView: View {
     let accountStores: [(account: Account, store: PRStore)]
+    let accountStore: AccountStore
     var onClose: (() -> Void)?
     @State private var showSettings = false
 
@@ -17,7 +18,7 @@ struct PopoverView: View {
         }
         .frame(width: 340)
         .sheet(isPresented: $showSettings, onDismiss: { onClose?() }) {
-            SettingsView()
+            SettingsView(accountStore: accountStore)
         }
     }
 

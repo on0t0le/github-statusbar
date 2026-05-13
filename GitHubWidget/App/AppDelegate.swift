@@ -69,7 +69,7 @@ import UserNotifications
 
     private func refreshPopover() {
         (popover.contentViewController as? NSHostingController<PopoverView>)?.rootView =
-            PopoverView(accountStores: accountStores, onClose: { [weak self] in
+            PopoverView(accountStores: accountStores, accountStore: accountStore, onClose: { [weak self] in
                 self?.popover.performClose(nil)
             })
     }
@@ -147,7 +147,7 @@ import UserNotifications
         popover.contentSize = NSSize(width: 340, height: 440)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(
-            rootView: PopoverView(accountStores: accountStores, onClose: { [weak self] in
+            rootView: PopoverView(accountStores: accountStores, accountStore: accountStore, onClose: { [weak self] in
                 self?.popover.performClose(nil)
             })
         )
