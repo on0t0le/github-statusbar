@@ -8,7 +8,7 @@ struct SettingsView: View {
     @State private var username = ""
     @State private var orgFilter = ""
     @AppStorage("notifications_enabled") private var notificationsEnabled = false
-    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var launchAtLogin = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -60,9 +60,11 @@ struct SettingsView: View {
             Toggle("Launch at login", isOn: Binding(
                 get: { launchAtLogin },
                 set: { enabled in
-                    try? enabled
-                        ? SMAppService.mainApp.register()
-                        : SMAppService.mainApp.unregister()
+                    if enabled {
+                        try? SMAppService.mainApp.register()
+                    } else {
+                        try? SMAppService.mainApp.unregister()
+                    }
                     launchAtLogin = SMAppService.mainApp.status == .enabled
                 }
             ))
