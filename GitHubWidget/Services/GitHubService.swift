@@ -170,11 +170,10 @@ actor GitHubService: GitHubServiceProtocol {
             approvedReviewers = totalApproved
             totalReviewers = totalApproved
         } else {
-            let pendingIndividuals = detail.requestedReviewers.count
+            let approvedIndividuals = originalIndividuals.filter { latestByUser[$0] == "APPROVED" }.count
             let pendingTeams = detail.requestedTeams.count
-            let satisfiedIndividuals = max(0, originalIndividuals.count - pendingIndividuals)
             let satisfiedTeams = max(0, originalTeams.count - pendingTeams)
-            approvedReviewers = satisfiedIndividuals + satisfiedTeams
+            approvedReviewers = approvedIndividuals + satisfiedTeams
             totalReviewers = totalRequested
         }
 
