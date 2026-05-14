@@ -77,6 +77,17 @@ actor GitHubService: GitHubServiceProtocol {
         let user: GitHubUser?
     }
 
+    private struct PRTimelineEvent: Decodable {
+        let event: String
+        let requestedReviewer: GitHubUser?
+        let requestedTeam: GitHubTeam?
+        enum CodingKeys: String, CodingKey {
+            case event
+            case requestedReviewer = "requested_reviewer"
+            case requestedTeam = "requested_team"
+        }
+    }
+
     private struct CheckRunsResponse: Decodable {
         let checkRuns: [CheckRun]
         struct CheckRun: Decodable {
@@ -124,7 +135,8 @@ actor GitHubService: GitHubServiceProtocol {
 
         async let reviewsResult = fetchReviews(pr: pr, token: token)
         async let checksResult = fetchCheckRuns(repositoryUrl: pr.repositoryUrl, sha: detail.head.sha, token: token)
-        let (reviews, checks) = await (reviewsResult, checksResult)
+        async let timelineResult = fetchTimeline(pr: pr, token: token)
+        let (reviews, checks, timeline) = await (reviewsResult, checksResult, timelineResult)
 
         var latestByUser: [String: String] = [:]
         for review in reviews {
@@ -135,13 +147,39 @@ actor GitHubService: GitHubServiceProtocol {
                 latestByUser[login] = review.state
             }
         }
-        let approved = latestByUser.values.filter { $0 == "APPROVED" }.count
-        let pendingIndividuals = detail.requestedReviewers.count
-        let pendingTeams = max(0, detail.requestedTeams.count - approved)
-        let totalReviewers = approved + pendingIndividuals + pendingTeams
+        let totalApproved = latestByUser.values.filter { $0 == "APPROVED" }.count
+
+        var originalIndividuals = Set<String>()
+        var originalTeams = Set<String>()
+        for event in timeline {
+            switch event.event {
+            case "review_requested":
+                if let u = event.requestedReviewer { originalIndividuals.insert(u.login) }
+                if let t = event.requestedTeam { originalTeams.insert(t.slug) }
+            case "review_request_removed":
+                if let u = event.requestedReviewer { originalIndividuals.remove(u.login) }
+                if let t = event.requestedTeam { originalTeams.remove(t.slug) }
+            default: break
+            }
+        }
+
+        let totalRequested = originalIndividuals.count + originalTeams.count
+        let approvedReviewers: Int
+        let totalReviewers: Int
+        if totalRequested == 0 {
+            approvedReviewers = totalApproved
+            totalReviewers = totalApproved
+        } else {
+            let pendingIndividuals = detail.requestedReviewers.count
+            let pendingTeams = detail.requestedTeams.count
+            let satisfiedIndividuals = max(0, originalIndividuals.count - pendingIndividuals)
+            let satisfiedTeams = max(0, originalTeams.count - pendingTeams)
+            approvedReviewers = satisfiedIndividuals + satisfiedTeams
+            totalReviewers = totalRequested
+        }
 
         return PREnrichment(
-            approvedReviewers: approved,
+            approvedReviewers: approvedReviewers,
             totalReviewers: totalReviewers,
             checksPassed: checks.passed,
             checksFailed: checks.failed,
@@ -158,6 +196,17 @@ actor GitHubService: GitHubServiceProtocol {
               let http = response as? HTTPURLResponse, http.statusCode == 200,
               let reviews = try? JSONDecoder().decode([PRReview].self, from: data) else { return [] }
         return reviews
+    }
+
+    private func fetchTimeline(pr: PullRequest, token: String) async -> [PRTimelineEvent] {
+        guard let url = URL(string: "\(pr.repositoryUrl)/issues/\(pr.number)/timeline?per_page=100") else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let events = try? JSONDecoder().decode([PRTimelineEvent].self, from: data) else { return [] }
+        return events
     }
 
     private func fetchCheckRuns(repositoryUrl: String, sha: String, token: String) async -> (passed: Int, failed: Int, total: Int) {
