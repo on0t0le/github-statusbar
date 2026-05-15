@@ -77,6 +77,33 @@ actor GitHubService: GitHubServiceProtocol {
         let user: GitHubUser?
     }
 
+    private struct GraphQLReviewNode: Decodable {
+        let state: String
+        let onBehalfOf: TeamConnection?
+        struct TeamConnection: Decodable {
+            let nodes: [TeamNode]
+        }
+        struct TeamNode: Decodable {
+            let slug: String
+        }
+    }
+
+    private struct GraphQLResponse: Decodable {
+        let data: GraphQLData?
+        struct GraphQLData: Decodable {
+            let repository: RepositoryData?
+            struct RepositoryData: Decodable {
+                let pullRequest: PRData?
+            }
+            struct PRData: Decodable {
+                let latestOpinionatedReviews: ReviewConnection?
+                struct ReviewConnection: Decodable {
+                    let nodes: [GraphQLReviewNode]
+                }
+            }
+        }
+    }
+
     private struct PRTimelineEvent: Decodable {
         let event: String
         let requestedReviewer: GitHubUser?
@@ -133,10 +160,15 @@ actor GitHubService: GitHubServiceProtocol {
               let http = detailResp as? HTTPURLResponse, http.statusCode == 200,
               let detail = try? JSONDecoder().decode(PRDetail.self, from: detailData) else { return nil }
 
+        let urlParts = pr.repositoryUrl.split(separator: "/")
+        let owner = urlParts.count >= 2 ? String(urlParts[urlParts.count - 2]) : ""
+        let repo = urlParts.count >= 1 ? String(urlParts[urlParts.count - 1]) : ""
+
         async let reviewsResult = fetchReviews(pr: pr, token: token)
         async let checksResult = fetchCheckRuns(repositoryUrl: pr.repositoryUrl, sha: detail.head.sha, token: token)
         async let timelineResult = fetchTimeline(pr: pr, token: token)
-        let (reviews, checks, timeline) = await (reviewsResult, checksResult, timelineResult)
+        async let graphqlReviewsResult = fetchGraphQLReviews(owner: owner, repo: repo, number: pr.number, token: token)
+        let (reviews, checks, timeline, graphqlReviews) = await (reviewsResult, checksResult, timelineResult, graphqlReviewsResult)
 
         var latestByUser: [String: String] = [:]
         for review in reviews {
@@ -163,6 +195,14 @@ actor GitHubService: GitHubServiceProtocol {
             }
         }
 
+        // Build set of teams with at least one approved "on behalf of" review from GraphQL
+        var teamsApprovedViaOnBehalfOf = Set<String>()
+        for node in graphqlReviews where node.state == "APPROVED" {
+            for team in node.onBehalfOf?.nodes ?? [] {
+                teamsApprovedViaOnBehalfOf.insert(team.slug)
+            }
+        }
+
         let totalRequested = originalIndividuals.count + originalTeams.count
         let approvedReviewers: Int
         let totalReviewers: Int
@@ -171,8 +211,10 @@ actor GitHubService: GitHubServiceProtocol {
             totalReviewers = totalApproved
         } else {
             let approvedIndividuals = originalIndividuals.filter { latestByUser[$0] == "APPROVED" }.count
-            let pendingTeams = detail.requestedTeams.count
-            let satisfiedTeams = max(0, originalTeams.count - pendingTeams)
+            // A team is satisfied if: removed from requestedTeams (REST) OR has an on-behalf-of approval (GraphQL)
+            let satisfiedTeams = originalTeams.filter { slug in
+                !detail.requestedTeams.contains { $0.slug == slug } || teamsApprovedViaOnBehalfOf.contains(slug)
+            }.count
             approvedReviewers = approvedIndividuals + satisfiedTeams
             totalReviewers = totalRequested
         }
@@ -184,6 +226,42 @@ actor GitHubService: GitHubServiceProtocol {
             checksFailed: checks.failed,
             checksTotal: checks.total
         )
+    }
+
+    private func fetchGraphQLReviews(owner: String, repo: String, number: Int, token: String) async -> [GraphQLReviewNode] {
+        let query = """
+        query($owner: String!, $repo: String!, $number: Int!) {
+          repository(owner: $owner, name: $repo) {
+            pullRequest(number: $number) {
+              latestOpinionatedReviews(last: 20) {
+                nodes {
+                  state
+                  onBehalfOf {
+                    nodes {
+                      slug
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+        let body: [String: Any] = [
+            "query": query,
+            "variables": ["owner": owner, "repo": repo, "number": number]
+        ]
+        guard let url = URL(string: "https://api.github.com/graphql"),
+              let bodyData = try? JSONSerialization.data(withJSONObject: body) else { return [] }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = bodyData
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let result = try? JSONDecoder().decode(GraphQLResponse.self, from: data) else { return [] }
+        return result.data?.repository?.pullRequest?.latestOpinionatedReviews?.nodes ?? []
     }
 
     private func fetchReviews(pr: PullRequest, token: String) async -> [PRReview] {
