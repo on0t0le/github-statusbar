@@ -240,6 +240,12 @@ actor GitHubService: GitHubServiceProtocol {
             }
         }
 
+        print("[enrichPR] PR#\(pr.number) \(owner)/\(repo)")
+        print("  latestByUser: \(latestByUser)")
+        print("  originalTeams: \(originalTeams), originalIndividuals: \(originalIndividuals)")
+        print("  graphqlPending: \(graphqlPendingTeams), onBehalfOf: \(teamsApprovedViaOnBehalfOf), membership: \(teamsApprovedViaMembership)")
+        print("  graphqlReviewNodes: \(graphqlData.reviewNodes.map { "\($0.state) onBehalfOf:\($0.onBehalfOf?.nodes.map(\.slug) ?? [])" })")
+
         let totalRequested = originalIndividuals.count + originalTeams.count
         let approvedReviewers: Int
         let totalReviewers: Int
