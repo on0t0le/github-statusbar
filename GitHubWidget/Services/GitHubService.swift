@@ -88,6 +88,11 @@ actor GitHubService: GitHubServiceProtocol {
         }
     }
 
+    private struct GraphQLPRData {
+        let reviewNodes: [GraphQLReviewNode]
+        let pendingTeamSlugs: Set<String>
+    }
+
     private struct GraphQLResponse: Decodable {
         let data: GraphQLData?
         struct GraphQLData: Decodable {
@@ -97,8 +102,19 @@ actor GitHubService: GitHubServiceProtocol {
             }
             struct PRData: Decodable {
                 let latestOpinionatedReviews: ReviewConnection?
+                let reviewRequests: ReviewRequestConnection?
                 struct ReviewConnection: Decodable {
                     let nodes: [GraphQLReviewNode]
+                }
+                struct ReviewRequestConnection: Decodable {
+                    let nodes: [ReviewRequestNode]
+                }
+                struct ReviewRequestNode: Decodable {
+                    let requestedReviewer: RequestedReviewer?
+                    struct RequestedReviewer: Decodable {
+                        let slug: String?
+                        enum CodingKeys: String, CodingKey { case slug }
+                    }
                 }
             }
         }
@@ -113,6 +129,10 @@ actor GitHubService: GitHubServiceProtocol {
             case requestedReviewer = "requested_reviewer"
             case requestedTeam = "requested_team"
         }
+    }
+
+    private struct TeamMember: Decodable {
+        let login: String
     }
 
     private struct CheckRunsResponse: Decodable {
@@ -167,8 +187,8 @@ actor GitHubService: GitHubServiceProtocol {
         async let reviewsResult = fetchReviews(pr: pr, token: token)
         async let checksResult = fetchCheckRuns(repositoryUrl: pr.repositoryUrl, sha: detail.head.sha, token: token)
         async let timelineResult = fetchTimeline(pr: pr, token: token)
-        async let graphqlReviewsResult = fetchGraphQLReviews(owner: owner, repo: repo, number: pr.number, token: token)
-        let (reviews, checks, timeline, graphqlReviews) = await (reviewsResult, checksResult, timelineResult, graphqlReviewsResult)
+        async let graphqlDataResult = fetchGraphQLReviews(owner: owner, repo: repo, number: pr.number, token: token)
+        let (reviews, checks, timeline, graphqlData) = await (reviewsResult, checksResult, timelineResult, graphqlDataResult)
 
         var latestByUser: [String: String] = [:]
         for review in reviews {
@@ -195,11 +215,28 @@ actor GitHubService: GitHubServiceProtocol {
             }
         }
 
-        // Build set of teams with at least one approved "on behalf of" review from GraphQL
+        // Both sources from the same GraphQL snapshot — consistent with each other
         var teamsApprovedViaOnBehalfOf = Set<String>()
-        for node in graphqlReviews where node.state == "APPROVED" {
+        for node in graphqlData.reviewNodes where node.state == "APPROVED" {
             for team in node.onBehalfOf?.nodes ?? [] {
                 teamsApprovedViaOnBehalfOf.insert(team.slug)
+            }
+        }
+        let graphqlPendingTeams = graphqlData.pendingTeamSlugs
+
+        // For teams still pending with no onBehalfOf signal, fall back to team membership lookup
+        let teamsNeedingMembershipCheck = originalTeams.filter {
+            graphqlPendingTeams.contains($0) && !teamsApprovedViaOnBehalfOf.contains($0)
+        }
+        var teamsApprovedViaMembership = Set<String>()
+        await withTaskGroup(of: (String, Set<String>).self) { group in
+            for slug in teamsNeedingMembershipCheck {
+                group.addTask { (slug, await self.fetchTeamMembers(org: owner, teamSlug: slug, token: token)) }
+            }
+            for await (slug, members) in group {
+                if members.contains(where: { latestByUser[$0] == "APPROVED" }) {
+                    teamsApprovedViaMembership.insert(slug)
+                }
             }
         }
 
@@ -211,9 +248,10 @@ actor GitHubService: GitHubServiceProtocol {
             totalReviewers = totalApproved
         } else {
             let approvedIndividuals = originalIndividuals.filter { latestByUser[$0] == "APPROVED" }.count
-            // A team is satisfied if: removed from requestedTeams (REST) OR has an on-behalf-of approval (GraphQL)
             let satisfiedTeams = originalTeams.filter { slug in
-                !detail.requestedTeams.contains { $0.slug == slug } || teamsApprovedViaOnBehalfOf.contains(slug)
+                !graphqlPendingTeams.contains(slug) ||
+                teamsApprovedViaOnBehalfOf.contains(slug) ||
+                teamsApprovedViaMembership.contains(slug)
             }.count
             approvedReviewers = approvedIndividuals + satisfiedTeams
             totalReviewers = totalRequested
@@ -228,7 +266,7 @@ actor GitHubService: GitHubServiceProtocol {
         )
     }
 
-    private func fetchGraphQLReviews(owner: String, repo: String, number: Int, token: String) async -> [GraphQLReviewNode] {
+    private func fetchGraphQLReviews(owner: String, repo: String, number: Int, token: String) async -> GraphQLPRData {
         let query = """
         query($owner: String!, $repo: String!, $number: Int!) {
           repository(owner: $owner, name: $repo) {
@@ -243,6 +281,15 @@ actor GitHubService: GitHubServiceProtocol {
                   }
                 }
               }
+              reviewRequests(first: 20) {
+                nodes {
+                  requestedReviewer {
+                    ... on Team {
+                      slug
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -252,7 +299,9 @@ actor GitHubService: GitHubServiceProtocol {
             "variables": ["owner": owner, "repo": repo, "number": number]
         ]
         guard let url = URL(string: "https://api.github.com/graphql"),
-              let bodyData = try? JSONSerialization.data(withJSONObject: body) else { return [] }
+              let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+            return GraphQLPRData(reviewNodes: [], pendingTeamSlugs: [])
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -260,8 +309,26 @@ actor GitHubService: GitHubServiceProtocol {
         request.httpBody = bodyData
         guard let (data, response) = try? await session.data(for: request),
               let http = response as? HTTPURLResponse, http.statusCode == 200,
-              let result = try? JSONDecoder().decode(GraphQLResponse.self, from: data) else { return [] }
-        return result.data?.repository?.pullRequest?.latestOpinionatedReviews?.nodes ?? []
+              let result = try? JSONDecoder().decode(GraphQLResponse.self, from: data),
+              let pr = result.data?.repository?.pullRequest else {
+            return GraphQLPRData(reviewNodes: [], pendingTeamSlugs: [])
+        }
+        let reviewNodes = pr.latestOpinionatedReviews?.nodes ?? []
+        let pendingTeamSlugs = Set(
+            (pr.reviewRequests?.nodes ?? []).compactMap { $0.requestedReviewer?.slug }
+        )
+        return GraphQLPRData(reviewNodes: reviewNodes, pendingTeamSlugs: pendingTeamSlugs)
+    }
+
+    private func fetchTeamMembers(org: String, teamSlug: String, token: String) async -> Set<String> {
+        guard let url = URL(string: "https://api.github.com/orgs/\(org)/teams/\(teamSlug)/members?per_page=100") else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        guard let (data, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let members = try? JSONDecoder().decode([TeamMember].self, from: data) else { return [] }
+        return Set(members.map(\.login))
     }
 
     private func fetchReviews(pr: PullRequest, token: String) async -> [PRReview] {
