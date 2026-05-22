@@ -280,7 +280,7 @@ actor GitHubService: GitHubServiceProtocol {
               latestOpinionatedReviews(last: 20) {
                 nodes {
                   state
-                  onBehalfOf {
+                  onBehalfOf(first: 10) {
                     nodes {
                       slug
                     }
@@ -332,9 +332,18 @@ actor GitHubService: GitHubServiceProtocol {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
         guard let (data, response) = try? await session.data(for: request),
-              let http = response as? HTTPURLResponse, http.statusCode == 200,
-              let members = try? JSONDecoder().decode([TeamMember].self, from: data) else { return [] }
-        return Set(members.map(\.login))
+              let http = response as? HTTPURLResponse else {
+            print("  [fetchTeamMembers] network error for \(org)/\(teamSlug)")
+            return []
+        }
+        guard http.statusCode == 200,
+              let members = try? JSONDecoder().decode([TeamMember].self, from: data) else {
+            print("  [fetchTeamMembers] failed status=\(http.statusCode) for \(org)/\(teamSlug)")
+            return []
+        }
+        let logins = Set(members.map(\.login))
+        print("  [fetchTeamMembers] \(org)/\(teamSlug) → \(logins.count) members: \(logins)")
+        return logins
     }
 
     private func fetchReviews(pr: PullRequest, token: String) async -> [PRReview] {
