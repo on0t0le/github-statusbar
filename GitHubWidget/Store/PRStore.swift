@@ -15,6 +15,7 @@ final class PRStore: ObservableObject {
 
     let account: Account
     private var previousResult: PRFetchResult?
+    private var currentResult: PRFetchResult?
     private let service: any GitHubServiceProtocol
     private let notificationService: any NotificationServiceProtocol
 
@@ -56,11 +57,8 @@ final class PRStore: ObservableObject {
                 unseenPRIds = unseenPRIds.union(newUnseen)
             }
             previousResult = result
-
-            waitingOnMe = result.waitingOnMe
-            readyToMerge = result.readyToMergeDeduped
-            inProgress = result.inProgress
-            totalCount = waitingOnMe.count + readyToMerge.count + inProgress.count
+            currentResult = result
+            applyCategories(result: result, enrichments: enrichments)
             lastUpdated = Date()
 
             let allPRs = result.allPRs
@@ -69,6 +67,9 @@ final class PRStore: ObservableObject {
                 let e = await self.service.fetchEnrichments(prs: allPRs, token: token)
                 DiagnosticLogger.shared.log("[PRStore] enrichments stored: \(e.count) entries for PRs \(allPRs.map { "#\(String($0.number))" }.joined(separator: ","))")
                 self.enrichments = e
+                if let result = self.currentResult {
+                    self.applyCategories(result: result, enrichments: e)
+                }
             }
         } catch let e as GitHubError {
             error = e
@@ -77,5 +78,29 @@ final class PRStore: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    private func applyCategories(result: PRFetchResult, enrichments: [Int: PREnrichment]) {
+        let promotedIds = Set(
+            result.inProgress.compactMap { pr -> Int? in
+                guard let e = enrichments[pr.id],
+                      e.totalReviewers > 0,
+                      e.approvedReviewers == e.totalReviewers else { return nil }
+                return pr.id
+            }
+        )
+
+        if !promotedIds.isEmpty {
+            let names = result.inProgress
+                .filter { promotedIds.contains($0.id) }
+                .map { "#\(String($0.number)) \($0.repoName)" }
+                .joined(separator: ", ")
+            DiagnosticLogger.shared.log("[PRStore] enrichment-promoted to readyToMerge: \(names)")
+        }
+
+        waitingOnMe = result.waitingOnMe
+        readyToMerge = result.readyToMergeDeduped + result.inProgress.filter { promotedIds.contains($0.id) }
+        inProgress = result.inProgress.filter { !promotedIds.contains($0.id) }
+        totalCount = waitingOnMe.count + readyToMerge.count + inProgress.count
     }
 }
