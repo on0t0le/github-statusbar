@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var launchAtLogin = false
     @State private var editingAccount: Account? = nil
     @State private var showAddAccount = false
+    @State private var showDiagnostics = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -45,6 +46,10 @@ struct SettingsView: View {
             ))
 
             HStack {
+                Button("Diagnostics…") { showDiagnostics = true }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .font(.subheadline)
                 Spacer()
                 Button("Done") { dismiss() }
                     .keyboardShortcut(.defaultAction)
@@ -58,6 +63,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAddAccount) {
             AccountEditView(accountStore: accountStore, account: nil)
+        }
+        .sheet(isPresented: $showDiagnostics) {
+            DiagnosticsView()
         }
     }
 
@@ -201,5 +209,80 @@ struct AccountEditView: View {
             accountStore.update(account: updated, token: token.isEmpty ? nil : token)
         }
         dismiss()
+    }
+}
+
+struct DiagnosticsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var logger = DiagnosticLogger.shared
+    @State private var copied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Diagnostics")
+                    .font(.headline)
+                Spacer()
+                if let path = logger.fileURL?.path {
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                }
+            }
+
+            if logger.entries.isEmpty {
+                Text("No log entries yet. Trigger a refresh to generate logs.")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 2) {
+                            ForEach(logger.entries) { entry in
+                                Text(entry.formatted)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(.primary.opacity(0.85))
+                                    .textSelection(.enabled)
+                                    .id(entry.id)
+                            }
+                        }
+                        .padding(8)
+                    }
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                    .onChange(of: logger.entries.count) { _ in
+                        if let last = logger.entries.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
+            }
+
+            HStack {
+                Button(copied ? "Copied!" : "Copy All") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(logger.allText, forType: .string)
+                    copied = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                }
+                .disabled(logger.entries.isEmpty)
+
+                Button("Clear") { logger.clearLogs() }
+                    .disabled(logger.entries.isEmpty)
+
+                Spacer()
+                Text("\(logger.entries.count) entries")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 600, height: 400)
     }
 }

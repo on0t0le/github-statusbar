@@ -25,6 +25,9 @@ actor GitHubService: GitHubServiceProtocol {
     }
 
     func fetchPRs(token: String, username: String, orgFilter: String) async throws -> PRFetchResult {
+        let log = DiagnosticLogger.shared
+        log.log("[fetchPRs] start username=\(username) orgFilter='\(orgFilter)'")
+
         async let reviewRequested = search(
             query: buildQuery("is:pr review-requested:@me state:open", orgFilter: orgFilter),
             token: token
@@ -43,6 +46,15 @@ actor GitHubService: GitHubServiceProtocol {
         )
 
         let (rr, cr, a, rtm) = try await (reviewRequested, changesRequested, assigned, readyToMerge)
+        log.log("[fetchPRs] search results: reviewRequested=\(rr.count) changesRequested=\(cr.count) assigned=\(a.count) readyToMerge=\(rtm.count)")
+
+        // GitHub search index lags after a review is submitted.
+        // Cross-check reviewRequested against actual reviews to drop PRs the user already acted on.
+        let filteredRR = await filterAlreadyReviewed(prs: rr, username: username, token: token)
+        if filteredRR.count != rr.count {
+            let removed = rr.filter { pr in !filteredRR.contains(where: { $0.id == pr.id }) }
+            log.log("[fetchPRs] filtered \(rr.count - filteredRR.count) already-reviewed PRs: \(removed.map { "#\(String($0.number)) \($0.repoName)" }.joined(separator: ", "))")
+        }
 
         var crActive: [PullRequest] = []
         var crPending: [PullRequest] = []
@@ -54,14 +66,42 @@ actor GitHubService: GitHubServiceProtocol {
                 if pending { crPending.append(pr) } else { crActive.append(pr) }
             }
         }
+        log.log("[fetchPRs] final: reviewRequested=\(filteredRR.count) crActive=\(crActive.count) crPending=\(crPending.count) assigned=\(a.count) readyToMerge=\(rtm.count)")
 
         return PRFetchResult(
-            reviewRequested: rr,
+            reviewRequested: filteredRR,
             changesRequested: crActive,
             changesRequestedPending: crPending,
             assigned: a,
             readyToMerge: rtm
         )
+    }
+
+    private func filterAlreadyReviewed(prs: [PullRequest], username: String, token: String) async -> [PullRequest] {
+        var result: [PullRequest] = []
+        await withTaskGroup(of: (PullRequest, Bool).self) { group in
+            for pr in prs {
+                group.addTask {
+                    let reviews = await self.fetchReviews(pr: pr, token: token)
+                    var latestState: String? = nil
+                    for review in reviews {
+                        guard review.user?.login == username else { continue }
+                        if review.state != "COMMENTED" && review.state != "PENDING" {
+                            latestState = review.state
+                        } else if latestState == nil && review.state == "COMMENTED" {
+                            latestState = review.state
+                        }
+                    }
+                    let alreadyActed = latestState == "APPROVED" || latestState == "CHANGES_REQUESTED"
+                    DiagnosticLogger.shared.log("[filterAlreadyReviewed] PR#\(pr.number) \(pr.repoName) latestReview=\(latestState ?? "nil") filtered=\(alreadyActed)")
+                    return (pr, !alreadyActed)
+                }
+            }
+            for await (pr, needsReview) in group {
+                if needsReview { result.append(pr) }
+            }
+        }
+        return result
     }
 
     private struct PRDetail: Decodable {
@@ -244,11 +284,12 @@ actor GitHubService: GitHubServiceProtocol {
             }
         }
 
-        print("[enrichPR] PR#\(pr.number) \(owner)/\(repo)")
-        print("  latestByUser: \(latestByUser)")
-        print("  originalTeams: \(originalTeams), originalIndividuals: \(originalIndividuals)")
-        print("  graphqlPending: \(graphqlPendingTeams), onBehalfOf: \(teamsApprovedViaOnBehalfOf), membership: \(teamsApprovedViaMembership)")
-        print("  graphqlReviewNodes: \(graphqlData.reviewNodes.map { "\($0.state) onBehalfOf:\($0.onBehalfOf?.nodes.map(\.slug) ?? [])" })")
+        let log = DiagnosticLogger.shared
+        log.log("[enrichPR] PR#\(pr.number) \(owner)/\(repo)")
+        log.log("  latestByUser: \(latestByUser)")
+        log.log("  originalTeams: \(originalTeams), originalIndividuals: \(originalIndividuals)")
+        log.log("  graphqlPending: \(graphqlPendingTeams), onBehalfOf: \(teamsApprovedViaOnBehalfOf), membership: \(teamsApprovedViaMembership)")
+        log.log("  graphqlReviewNodes: \(graphqlData.reviewNodes.map { "\($0.state) onBehalfOf:\($0.onBehalfOf?.nodes.map(\.slug) ?? [])" })")
 
         let totalRequested = originalIndividuals.count + originalTeams.count
         let approvedReviewers: Int
@@ -337,16 +378,16 @@ actor GitHubService: GitHubServiceProtocol {
         request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
         guard let (data, response) = try? await session.data(for: request),
               let http = response as? HTTPURLResponse else {
-            print("  [fetchTeamMembers] network error for \(org)/\(teamSlug)")
+            DiagnosticLogger.shared.log("  [fetchTeamMembers] network error for \(org)/\(teamSlug)")
             return []
         }
         guard http.statusCode == 200,
               let members = try? JSONDecoder().decode([TeamMember].self, from: data) else {
-            print("  [fetchTeamMembers] failed status=\(http.statusCode) for \(org)/\(teamSlug)")
+            DiagnosticLogger.shared.log("  [fetchTeamMembers] failed status=\(http.statusCode) for \(org)/\(teamSlug)")
             return []
         }
         let logins = Set(members.map(\.login))
-        print("  [fetchTeamMembers] \(org)/\(teamSlug) → \(logins.count) members: \(logins)")
+        DiagnosticLogger.shared.log("  [fetchTeamMembers] \(org)/\(teamSlug) → \(logins.count) members: \(logins)")
         return logins
     }
 
@@ -411,6 +452,7 @@ actor GitHubService: GitHubServiceProtocol {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            DiagnosticLogger.shared.log("[search] network error: \(error.localizedDescription)")
             throw GitHubError.networkError
         }
 
@@ -421,14 +463,18 @@ actor GitHubService: GitHubServiceProtocol {
             do {
                 return try JSONDecoder().decode(GitHubSearchResponse.self, from: data).items
             } catch {
+                DiagnosticLogger.shared.log("[search] decode error: \(error)")
                 throw GitHubError.decodingError
             }
         case 401:
+            DiagnosticLogger.shared.log("[search] unauthorized (401)")
             throw GitHubError.unauthorized
         case 403, 429:
             let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init)
+            DiagnosticLogger.shared.log("[search] rate limited status=\(http.statusCode) retryAfter=\(retryAfter.map(String.init) ?? "nil")")
             throw GitHubError.rateLimited(retryAfter: retryAfter)
         default:
+            DiagnosticLogger.shared.log("[search] unexpected status=\(http.statusCode)")
             throw GitHubError.networkError
         }
     }
