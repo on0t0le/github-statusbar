@@ -308,6 +308,7 @@ actor GitHubService: GitHubServiceProtocol {
             totalReviewers = totalRequested
         }
 
+        log.log("  → approvedReviewers=\(approvedReviewers)/\(totalReviewers) totalRequested=\(totalRequested) checks=\(checks.passed)/\(checks.total) failed=\(checks.failed)")
         return PREnrichment(
             approvedReviewers: approvedReviewers,
             totalReviewers: totalReviewers,

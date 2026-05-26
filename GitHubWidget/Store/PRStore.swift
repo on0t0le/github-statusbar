@@ -67,6 +67,7 @@ final class PRStore: ObservableObject {
             Task { [weak self, token] in
                 guard let self else { return }
                 let e = await self.service.fetchEnrichments(prs: allPRs, token: token)
+                DiagnosticLogger.shared.log("[PRStore] enrichments stored: \(e.count) entries for PRs \(allPRs.map { "#\(String($0.number))" }.joined(separator: ","))")
                 self.enrichments = e
             }
         } catch let e as GitHubError {
