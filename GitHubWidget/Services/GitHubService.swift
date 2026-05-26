@@ -16,7 +16,11 @@ actor GitHubService: GitHubServiceProtocol {
 
     private let session: URLSessionProtocol
 
-    init(session: URLSessionProtocol = URLSession(configuration: .ephemeral)) {
+    init(session: URLSessionProtocol = {
+        let config = URLSessionConfiguration.ephemeral
+        config.urlCache = nil
+        return URLSession(configuration: config)
+    }()) {
         self.session = session
     }
 
