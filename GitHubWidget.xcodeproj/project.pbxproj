@@ -19,6 +19,7 @@
 		5ACB52482A6C3D63E60359B9 /* GitHubService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F05DF6DFD2941DC129819F /* GitHubService.swift */; };
 		5CCD064ADF41FBD66DF1B53A /* KeychainHelperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230D5B482F7A05DAEB70CB77 /* KeychainHelperTests.swift */; };
 		6A4710D34F42D490EEAC983D /* PullRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4671DC37394AFBAAE55253 /* PullRequestTests.swift */; };
+		74CE3242EC87DB4C9FBFC9BD /* DiagnosticLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44555A544EAA426CA1D12263 /* DiagnosticLogger.swift */; };
 		98D710CB109C91889F3C287D /* PRRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E27CA80B82A4C7C9649B2E2 /* PRRowView.swift */; };
 		9E3071512DAF49492B1EF550 /* GitHubServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1031C8F636AFBB434E85E054 /* GitHubServiceTests.swift */; };
 		BF5E8762CF0F7E443920498D /* AccountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C18DCE67D9A3E85EDC6244 /* AccountTests.swift */; };
@@ -50,6 +51,7 @@
 		35ACD4EF906973F1C84163C4 /* GitHubWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubWidgetApp.swift; sourceTree = "<group>"; };
 		3E27CA80B82A4C7C9649B2E2 /* PRRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRRowView.swift; sourceTree = "<group>"; };
 		403B466C30960E874ED50F82 /* GitHubError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubError.swift; sourceTree = "<group>"; };
+		44555A544EAA426CA1D12263 /* DiagnosticLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticLogger.swift; sourceTree = "<group>"; };
 		52C18DCE67D9A3E85EDC6244 /* AccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountTests.swift; sourceTree = "<group>"; };
 		5B3D4636CC768F0A494320D2 /* GitHubWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GitHubWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		601BEE7CA2FF34743E756F60 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
@@ -144,6 +146,7 @@
 		96E4A94E491E84124710C866 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				44555A544EAA426CA1D12263 /* DiagnosticLogger.swift */,
 				842E459B3AEBCB61D4EBDEFB /* KeychainHelper.swift */,
 			);
 			path = Utilities;
@@ -286,6 +289,7 @@
 				1E5A350CBD6F7D587C814375 /* AccountSectionView.swift in Sources */,
 				E7BC82B1C65BD0ACB788BF37 /* AccountStore.swift in Sources */,
 				1D6D49DCB2B71D3568FF7F51 /* AppDelegate.swift in Sources */,
+				74CE3242EC87DB4C9FBFC9BD /* DiagnosticLogger.swift in Sources */,
 				2C45D2037DE4A63D9C938BF4 /* GitHubError.swift in Sources */,
 				5ACB52482A6C3D63E60359B9 /* GitHubService.swift in Sources */,
 				F01FA6C3AC3AC48031D827E9 /* GitHubWidgetApp.swift in Sources */,
