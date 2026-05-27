@@ -135,6 +135,7 @@ actor GitHubService: GitHubServiceProtocol {
     private struct GraphQLPRData {
         let reviewNodes: [GraphQLReviewNode]
         let pendingTeamSlugs: Set<String>
+        let reviewDecision: String?
     }
 
     private struct GraphQLResponse: Decodable {
@@ -147,6 +148,7 @@ actor GitHubService: GitHubServiceProtocol {
             struct PRData: Decodable {
                 let latestOpinionatedReviews: ReviewConnection?
                 let reviewRequests: ReviewRequestConnection?
+                let reviewDecision: String?
                 struct ReviewConnection: Decodable {
                     let nodes: [GraphQLReviewNode]
                 }
@@ -290,11 +292,17 @@ actor GitHubService: GitHubServiceProtocol {
         log.log("  originalTeams: \(originalTeams), originalIndividuals: \(originalIndividuals)")
         log.log("  graphqlPending: \(graphqlPendingTeams), onBehalfOf: \(teamsApprovedViaOnBehalfOf), membership: \(teamsApprovedViaMembership)")
         log.log("  graphqlReviewNodes: \(graphqlData.reviewNodes.map { "\($0.state) onBehalfOf:\($0.onBehalfOf?.nodes.map(\.slug) ?? [])" })")
+        log.log("  reviewDecision: \(graphqlData.reviewDecision ?? "nil")")
 
         let totalRequested = originalIndividuals.count + originalTeams.count
         let approvedReviewers: Int
         let totalReviewers: Int
-        if totalRequested == 0 {
+        // reviewDecision==APPROVED is the authoritative GitHub signal — use it as override
+        // when latestOpinionatedReviews is still propagating (API lag after team approval)
+        if graphqlData.reviewDecision == "APPROVED" && totalRequested > 0 {
+            approvedReviewers = totalRequested
+            totalReviewers = totalRequested
+        } else if totalRequested == 0 {
             approvedReviewers = totalApproved
             totalReviewers = totalApproved
         } else {
@@ -323,6 +331,7 @@ actor GitHubService: GitHubServiceProtocol {
         query($owner: String!, $repo: String!, $number: Int!) {
           repository(owner: $owner, name: $repo) {
             pullRequest(number: $number) {
+              reviewDecision
               latestOpinionatedReviews(last: 20) {
                 nodes {
                   state
@@ -352,7 +361,7 @@ actor GitHubService: GitHubServiceProtocol {
         ]
         guard let url = URL(string: "https://api.github.com/graphql"),
               let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
-            return GraphQLPRData(reviewNodes: [], pendingTeamSlugs: [])
+            return GraphQLPRData(reviewNodes: [], pendingTeamSlugs: [], reviewDecision: nil)
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -363,13 +372,13 @@ actor GitHubService: GitHubServiceProtocol {
               let http = response as? HTTPURLResponse, http.statusCode == 200,
               let result = try? JSONDecoder().decode(GraphQLResponse.self, from: data),
               let pr = result.data?.repository?.pullRequest else {
-            return GraphQLPRData(reviewNodes: [], pendingTeamSlugs: [])
+            return GraphQLPRData(reviewNodes: [], pendingTeamSlugs: [], reviewDecision: nil)
         }
         let reviewNodes = pr.latestOpinionatedReviews?.nodes ?? []
         let pendingTeamSlugs = Set(
             (pr.reviewRequests?.nodes ?? []).compactMap { $0.requestedReviewer?.slug }
         )
-        return GraphQLPRData(reviewNodes: reviewNodes, pendingTeamSlugs: pendingTeamSlugs)
+        return GraphQLPRData(reviewNodes: reviewNodes, pendingTeamSlugs: pendingTeamSlugs, reviewDecision: pr.reviewDecision)
     }
 
     private func fetchTeamMembers(org: String, teamSlug: String, token: String) async -> Set<String> {
