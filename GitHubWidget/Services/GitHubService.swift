@@ -308,18 +308,36 @@ actor GitHubService: GitHubServiceProtocol {
             approvedReviewers = totalApproved
             totalReviewers = totalApproved
         } else {
-            // individual approved if latestByUser says APPROVED or they're no longer pending (real-time)
-            let approvedIndividuals = originalIndividuals.filter { login in
+            let approvedIndividualLogins = originalIndividuals.filter { login in
                 latestByUser[login] == "APPROVED" || !prDetailPendingIndividuals.contains(login)
-            }.count
-            let satisfiedTeams = originalTeams.filter { slug in
+            }
+            let satisfiedTeamSlugs = originalTeams.filter { slug in
                 !graphqlPendingTeams.contains(slug) ||
                 !prDetailPendingTeams.contains(slug) ||
                 teamsApprovedViaOnBehalfOf.contains(slug) ||
                 teamsApprovedViaMembership.contains(slug)
-            }.count
-            approvedReviewers = approvedIndividuals + satisfiedTeams
+            }
+            approvedReviewers = approvedIndividualLogins.count + satisfiedTeamSlugs.count
             totalReviewers = totalRequested
+
+            // log which signal caused each approval for debuggability
+            for login in approvedIndividualLogins {
+                let via = latestByUser[login] == "APPROVED" ? "latestByUser" : "prDetailNotPending"
+                log.log("  ✓ individual \(login) via \(via)")
+            }
+            for slug in satisfiedTeamSlugs {
+                let via: String
+                if !graphqlPendingTeams.contains(slug) { via = "graphqlNotPending" }
+                else if !prDetailPendingTeams.contains(slug) { via = "prDetailNotPending" }
+                else if teamsApprovedViaOnBehalfOf.contains(slug) { via = "onBehalfOf" }
+                else { via = "membership" }
+                log.log("  ✓ team \(slug) via \(via)")
+            }
+            let pendingIndividuals = originalIndividuals.subtracting(approvedIndividualLogins)
+            let pendingTeams = originalTeams.subtracting(satisfiedTeamSlugs)
+            if !pendingIndividuals.isEmpty || !pendingTeams.isEmpty {
+                log.log("  ✗ still pending — individuals: \(pendingIndividuals), teams: \(pendingTeams)")
+            }
         }
 
         log.log("  → approvedReviewers=\(approvedReviewers)/\(totalReviewers) totalRequested=\(totalRequested) checks=\(checks.passed)/\(checks.total) failed=\(checks.failed)")

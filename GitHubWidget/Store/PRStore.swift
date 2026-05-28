@@ -90,17 +90,27 @@ final class PRStore: ObservableObject {
             }
         )
 
+        let log = DiagnosticLogger.shared
         if !promotedIds.isEmpty {
             let names = result.inProgress
                 .filter { promotedIds.contains($0.id) }
                 .map { "#\(String($0.number)) \($0.repoName)" }
                 .joined(separator: ", ")
-            DiagnosticLogger.shared.log("[PRStore] enrichment-promoted to readyToMerge: \(names)")
+            log.log("[PRStore] enrichment-promoted to readyToMerge: \(names)")
         }
 
-        waitingOnMe = result.waitingOnMe
-        readyToMerge = result.readyToMergeDeduped + result.inProgress.filter { promotedIds.contains($0.id) }
-        inProgress = result.inProgress.filter { !promotedIds.contains($0.id) }
+        let newWaitingOnMe = result.waitingOnMe
+        let newReadyToMerge = result.readyToMergeDeduped + result.inProgress.filter { promotedIds.contains($0.id) }
+        let newInProgress = result.inProgress.filter { !promotedIds.contains($0.id) }
+
+        let fmt: ([PullRequest]) -> String = { $0.map { "#\(String($0.number)) \($0.repoName)" }.joined(separator: ", ") }
+        log.log("[PRStore] categories — waitingOnMe: [\(fmt(newWaitingOnMe))]")
+        log.log("[PRStore] categories — readyToMerge: [\(fmt(newReadyToMerge))]")
+        log.log("[PRStore] categories — inProgress: [\(fmt(newInProgress))]")
+
+        waitingOnMe = newWaitingOnMe
+        readyToMerge = newReadyToMerge
+        inProgress = newInProgress
         totalCount = waitingOnMe.count + readyToMerge.count + inProgress.count
     }
 }
