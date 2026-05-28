@@ -261,6 +261,10 @@ actor GitHubService: GitHubServiceProtocol {
             }
         }
 
+        // Real-time signals from PR detail: team/individual removed immediately on review submit
+        let prDetailPendingTeams = Set(detail.requestedTeams.map(\.slug))
+        let prDetailPendingIndividuals = Set(detail.requestedReviewers.map(\.login))
+
         // Both sources from the same GraphQL snapshot — consistent with each other
         var teamsApprovedViaOnBehalfOf = Set<String>()
         for node in graphqlData.reviewNodes where node.state == "APPROVED" {
@@ -270,9 +274,11 @@ actor GitHubService: GitHubServiceProtocol {
         }
         let graphqlPendingTeams = graphqlData.pendingTeamSlugs
 
-        // For teams still pending with no onBehalfOf signal, fall back to team membership lookup
+        // Only do membership lookup for teams pending in BOTH GraphQL AND real-time PR detail
         let teamsNeedingMembershipCheck = originalTeams.filter {
-            graphqlPendingTeams.contains($0) && !teamsApprovedViaOnBehalfOf.contains($0)
+            graphqlPendingTeams.contains($0) &&
+            prDetailPendingTeams.contains($0) &&
+            !teamsApprovedViaOnBehalfOf.contains($0)
         }
         var teamsApprovedViaMembership = Set<String>()
         await withTaskGroup(of: (String, Set<String>).self) { group in
@@ -290,6 +296,7 @@ actor GitHubService: GitHubServiceProtocol {
         log.log("[enrichPR] PR#\(pr.number) \(owner)/\(repo)")
         log.log("  latestByUser: \(latestByUser)")
         log.log("  originalTeams: \(originalTeams), originalIndividuals: \(originalIndividuals)")
+        log.log("  prDetailPending teams: \(prDetailPendingTeams), individuals: \(prDetailPendingIndividuals)")
         log.log("  graphqlPending: \(graphqlPendingTeams), onBehalfOf: \(teamsApprovedViaOnBehalfOf), membership: \(teamsApprovedViaMembership)")
         log.log("  graphqlReviewNodes: \(graphqlData.reviewNodes.map { "\($0.state) onBehalfOf:\($0.onBehalfOf?.nodes.map(\.slug) ?? [])" })")
         log.log("  reviewDecision: \(graphqlData.reviewDecision ?? "nil")")
@@ -297,18 +304,17 @@ actor GitHubService: GitHubServiceProtocol {
         let totalRequested = originalIndividuals.count + originalTeams.count
         let approvedReviewers: Int
         let totalReviewers: Int
-        // reviewDecision==APPROVED is the authoritative GitHub signal — use it as override
-        // when latestOpinionatedReviews is still propagating (API lag after team approval)
-        if graphqlData.reviewDecision == "APPROVED" && totalRequested > 0 {
-            approvedReviewers = totalRequested
-            totalReviewers = totalRequested
-        } else if totalRequested == 0 {
+        if totalRequested == 0 {
             approvedReviewers = totalApproved
             totalReviewers = totalApproved
         } else {
-            let approvedIndividuals = originalIndividuals.filter { latestByUser[$0] == "APPROVED" }.count
+            // individual approved if latestByUser says APPROVED or they're no longer pending (real-time)
+            let approvedIndividuals = originalIndividuals.filter { login in
+                latestByUser[login] == "APPROVED" || !prDetailPendingIndividuals.contains(login)
+            }.count
             let satisfiedTeams = originalTeams.filter { slug in
                 !graphqlPendingTeams.contains(slug) ||
+                !prDetailPendingTeams.contains(slug) ||
                 teamsApprovedViaOnBehalfOf.contains(slug) ||
                 teamsApprovedViaMembership.contains(slug)
             }.count
