@@ -317,8 +317,16 @@ actor GitHubService: GitHubServiceProtocol {
                 teamsApprovedViaOnBehalfOf.contains(slug) ||
                 teamsApprovedViaMembership.contains(slug)
             }
-            approvedReviewers = approvedIndividualLogins.count + satisfiedTeamSlugs.count
+            let granularApproved = approvedIndividualLogins.count + satisfiedTeamSlugs.count
+            // reviewDecision=="APPROVED" means GitHub considers all required reviews satisfied.
+            // Use it as a fallback when granular signals under-count (e.g. team "on behalf of"
+            // approval where onBehalfOf is empty and read:org scope is absent).
+            let reviewDecisionOverride = granularApproved < totalRequested && graphqlData.reviewDecision == "APPROVED"
+            approvedReviewers = reviewDecisionOverride ? totalRequested : granularApproved
             totalReviewers = totalRequested
+            if reviewDecisionOverride {
+                log.log("  ✓ reviewDecision override: granular=\(granularApproved) → \(totalRequested)/\(totalRequested)")
+            }
 
             // log which signal caused each approval for debuggability
             for login in approvedIndividualLogins {
