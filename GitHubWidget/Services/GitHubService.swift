@@ -311,6 +311,17 @@ actor GitHubService: GitHubServiceProtocol {
             let approvedIndividualLogins = originalIndividuals.filter { login in
                 latestByUser[login] == "APPROVED" || !prDetailPendingIndividuals.contains(login)
             }
+            // Users who approved but aren't requested individuals are likely on-behalf-of team approvals.
+            // When read:org is absent, onBehalfOf is empty and membership check returns [].
+            // Use unattributed approval count as a last-resort signal to satisfy pending teams.
+            let unattributedApproved = latestByUser.filter { login, state in
+                state == "APPROVED" && !originalIndividuals.contains(login)
+            }.count
+            let teamsUnresolved = teamsNeedingMembershipCheck.subtracting(teamsApprovedViaMembership)
+            if unattributedApproved > 0 && unattributedApproved >= teamsUnresolved.count {
+                teamsApprovedViaMembership.formUnion(teamsUnresolved)
+                log.log("  ✓ teams \(teamsUnresolved) via unattributed approval fallback (unattributed=\(unattributedApproved))")
+            }
             let satisfiedTeamSlugs = originalTeams.filter { slug in
                 !graphqlPendingTeams.contains(slug) ||
                 !prDetailPendingTeams.contains(slug) ||
@@ -338,6 +349,7 @@ actor GitHubService: GitHubServiceProtocol {
                 if !graphqlPendingTeams.contains(slug) { via = "graphqlNotPending" }
                 else if !prDetailPendingTeams.contains(slug) { via = "prDetailNotPending" }
                 else if teamsApprovedViaOnBehalfOf.contains(slug) { via = "onBehalfOf" }
+                else if teamsUnresolved.contains(slug) { via = "unattributed" }
                 else { via = "membership" }
                 log.log("  ✓ team \(slug) via \(via)")
             }
