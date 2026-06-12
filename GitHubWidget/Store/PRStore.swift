@@ -58,7 +58,15 @@ final class PRStore: ObservableObject {
             }
             previousResult = result
             currentResult = result
-            applyCategories(result: result, enrichments: enrichments)
+            // Enrichments computed while PRs were in inProgress become stale the moment
+            // those PRs transition to readyToMerge (search result updated, enrichment hasn't).
+            // Showing "0/N" next to "Ready to Merge" is misleading, so drop stale entries.
+            let prevReadyIds = Set(readyToMerge.map(\.id))
+            let newReadyIds = Set(result.readyToMerge.map(\.id))
+            let justMovedToReady = newReadyIds.subtracting(prevReadyIds)
+            var initialEnrichments = enrichments
+            justMovedToReady.forEach { initialEnrichments.removeValue(forKey: $0) }
+            applyCategories(result: result, enrichments: initialEnrichments)
             lastUpdated = Date()
 
             let allPRs = result.allPRs
