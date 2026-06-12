@@ -72,8 +72,24 @@ final class PRStore: ObservableObject {
             let allPRs = result.allPRs
             Task { [weak self, token] in
                 guard let self else { return }
-                let e = await self.service.fetchEnrichments(prs: allPRs, token: token)
+                var e = await self.service.fetchEnrichments(prs: allPRs, token: token)
                 DiagnosticLogger.shared.log("[PRStore] enrichments stored: \(e.count) entries for PRs \(allPRs.map { "#\(String($0.number))" }.joined(separator: ","))")
+                // PRs from GitHub's "review:approved" search are confirmed approved.
+                // Our granular reviewer counting can under-report (e.g. when GraphQL reviewDecision
+                // is nil or onBehalfOf is empty), so clamp to totalReviewers for these PRs.
+                let searchReadyIds = Set(result.readyToMerge.map(\.id))
+                for id in searchReadyIds {
+                    guard let enrichment = e[id], enrichment.totalReviewers > 0,
+                          enrichment.approvedReviewers < enrichment.totalReviewers else { continue }
+                    DiagnosticLogger.shared.log("[PRStore] clamp readyToMerge PR#\(id): \(enrichment.approvedReviewers)/\(enrichment.totalReviewers) → \(enrichment.totalReviewers)/\(enrichment.totalReviewers)")
+                    e[id] = PREnrichment(
+                        approvedReviewers: enrichment.totalReviewers,
+                        totalReviewers: enrichment.totalReviewers,
+                        checksPassed: enrichment.checksPassed,
+                        checksFailed: enrichment.checksFailed,
+                        checksTotal: enrichment.checksTotal
+                    )
+                }
                 self.enrichments = e
                 if let result = self.currentResult {
                     self.applyCategories(result: result, enrichments: e)
