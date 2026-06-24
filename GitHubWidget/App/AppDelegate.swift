@@ -88,8 +88,13 @@ import UserNotifications
     }
 
     private func refreshAll() {
-        for (_, store) in accountStores {
-            Task { await store.refresh() }
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                for (_, store) in accountStores {
+                    group.addTask { await store.refresh() }
+                }
+            }
+            refreshPopover()
         }
     }
 
