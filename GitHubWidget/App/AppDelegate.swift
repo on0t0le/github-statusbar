@@ -81,10 +81,15 @@ import UserNotifications
     }
 
     private func refreshPopover() {
-        (popover.contentViewController as? NSHostingController<PopoverView>)?.rootView =
-            PopoverView(accountStores: accountStores, accountStore: accountStore, onClose: { [weak self] in
+        // Rebuild the controller itself rather than mutating rootView on an `as?` cast —
+        // a failed cast there would silently no-op forever, leaving the popover stuck on
+        // whatever was last rendered.
+        popover.contentViewController = NSHostingController(
+            rootView: PopoverView(accountStores: accountStores, accountStore: accountStore, onClose: { [weak self] in
                 self?.popover.performClose(nil)
             })
+        )
+        DiagnosticLogger.shared.log("[AppDelegate] refreshPopover rebuilt controller for \(accountStores.count) account(s)")
     }
 
     private func refreshAll() {

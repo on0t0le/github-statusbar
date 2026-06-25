@@ -15,7 +15,6 @@ final class PRStore: ObservableObject {
 
     let account: Account
     private var previousResult: PRFetchResult?
-    private var currentResult: PRFetchResult?
     private let service: any GitHubServiceProtocol
     private let notificationService: any NotificationServiceProtocol
 
@@ -57,7 +56,6 @@ final class PRStore: ObservableObject {
                 unseenPRIds = unseenPRIds.union(newUnseen)
             }
             previousResult = result
-            currentResult = result
             // Enrichments computed while PRs were in inProgress become stale the moment
             // those PRs transition to readyToMerge (search result updated, enrichment hasn't).
             // Showing "0/N" next to "Ready to Merge" is misleading, so drop stale entries.
@@ -69,32 +67,31 @@ final class PRStore: ObservableObject {
             applyCategories(result: result, enrichments: initialEnrichments)
             lastUpdated = Date()
 
+            // Awaited (not detached) so callers — e.g. AppDelegate.refreshAll() — only see
+            // refresh() complete once enrichments are actually fresh. A fire-and-forget Task
+            // here previously let refreshPopover() rebuild the UI with last cycle's stale
+            // enrichments before this cycle's fetch landed.
             let allPRs = result.allPRs
-            Task { [weak self, token] in
-                guard let self else { return }
-                var e = await self.service.fetchEnrichments(prs: allPRs, token: token)
-                DiagnosticLogger.shared.log("[PRStore] enrichments stored: \(e.count) entries for PRs \(allPRs.map { "#\(String($0.number))" }.joined(separator: ","))")
-                // PRs from GitHub's "review:approved" search are confirmed approved.
-                // Our granular reviewer counting can under-report (e.g. when GraphQL reviewDecision
-                // is nil or onBehalfOf is empty), so clamp to totalReviewers for these PRs.
-                let searchReadyIds = Set(result.readyToMerge.map(\.id))
-                for id in searchReadyIds {
-                    guard let enrichment = e[id], enrichment.totalReviewers > 0,
-                          enrichment.approvedReviewers < enrichment.totalReviewers else { continue }
-                    DiagnosticLogger.shared.log("[PRStore] clamp readyToMerge PR#\(id): \(enrichment.approvedReviewers)/\(enrichment.totalReviewers) → \(enrichment.totalReviewers)/\(enrichment.totalReviewers)")
-                    e[id] = PREnrichment(
-                        approvedReviewers: enrichment.totalReviewers,
-                        totalReviewers: enrichment.totalReviewers,
-                        checksPassed: enrichment.checksPassed,
-                        checksFailed: enrichment.checksFailed,
-                        checksTotal: enrichment.checksTotal
-                    )
-                }
-                self.enrichments = e
-                if let result = self.currentResult {
-                    self.applyCategories(result: result, enrichments: e)
-                }
+            var e = await service.fetchEnrichments(prs: allPRs, token: token)
+            DiagnosticLogger.shared.log("[PRStore] enrichments stored: \(e.count) entries for PRs \(allPRs.map { "#\(String($0.number))" }.joined(separator: ","))")
+            // PRs from GitHub's "review:approved" search are confirmed approved.
+            // Our granular reviewer counting can under-report (e.g. when GraphQL reviewDecision
+            // is nil or onBehalfOf is empty), so clamp to totalReviewers for these PRs.
+            let searchReadyIds = Set(result.readyToMerge.map(\.id))
+            for id in searchReadyIds {
+                guard let enrichment = e[id], enrichment.totalReviewers > 0,
+                      enrichment.approvedReviewers < enrichment.totalReviewers else { continue }
+                DiagnosticLogger.shared.log("[PRStore] clamp readyToMerge PR#\(id): \(enrichment.approvedReviewers)/\(enrichment.totalReviewers) → \(enrichment.totalReviewers)/\(enrichment.totalReviewers)")
+                e[id] = PREnrichment(
+                    approvedReviewers: enrichment.totalReviewers,
+                    totalReviewers: enrichment.totalReviewers,
+                    checksPassed: enrichment.checksPassed,
+                    checksFailed: enrichment.checksFailed,
+                    checksTotal: enrichment.checksTotal
+                )
             }
+            enrichments = e
+            applyCategories(result: result, enrichments: e)
         } catch let e as GitHubError {
             error = e
         } catch {

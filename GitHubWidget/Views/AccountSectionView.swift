@@ -50,6 +50,7 @@ struct AccountSectionView: View {
             SectionHeaderView(emoji: "👀", title: "WAITING ON ME", count: store.waitingOnMe.count)
             ForEach(store.waitingOnMe) { pr in
                 PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
+                    .id(rowIdentity(for: pr))
                 Divider().padding(.leading, 12)
             }
         }
@@ -57,6 +58,7 @@ struct AccountSectionView: View {
             SectionHeaderView(emoji: "✅", title: "READY TO MERGE", count: store.readyToMerge.count)
             ForEach(store.readyToMerge) { pr in
                 PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
+                    .id(rowIdentity(for: pr))
                 Divider().padding(.leading, 12)
             }
         }
@@ -64,9 +66,17 @@ struct AccountSectionView: View {
             SectionHeaderView(emoji: "🔄", title: "IN PROGRESS", count: store.inProgress.count)
             ForEach(store.inProgress) { pr in
                 PRRowView(pr: pr, isUnseen: store.unseenPRIds.contains(pr.id), enrichment: store.enrichments[pr.id])
+                    .id(rowIdentity(for: pr))
                 Divider().padding(.leading, 12)
             }
         }
+    }
+
+    // Forces SwiftUI to treat a changed enrichment count as a new view identity,
+    // so a row can never silently keep showing a stale "X/Y" after enrichments update.
+    private func rowIdentity(for pr: PullRequest) -> String {
+        let e = store.enrichments[pr.id]
+        return "\(pr.id)-\(e?.approvedReviewers ?? -1)-\(e?.totalReviewers ?? -1)"
     }
 
     private func errorView(_ error: GitHubError) -> some View {
